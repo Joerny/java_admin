@@ -1,5 +1,7 @@
 # JavaAdmin
 
+[![Build Status](https://app.snap-ci.com/Joerny/java_admin/branch/development/build_image)](https://app.snap-ci.com/Joerny/java_admin/branch/development)
+
 JavaAdmin is a simple PoC for a CRUD GUI that is based on Spring boot and entities that are live in this application. This is not a complete, ready-to-use-in-production solution but a starting point for your own admin interface.
 
 ## Installation
