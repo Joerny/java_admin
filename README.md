@@ -33,6 +33,8 @@ It runs under ``localhost:8080``.
 
 ## Release History
 
+* 0.1
+    * Added support for ``java.util.Date``
 * 0.0.1
     * Initial release
 

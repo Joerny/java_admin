@@ -1,15 +1,11 @@
 package com.joerny.javaadmin.controller;
 
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.metamodel.Attribute;
-import javax.persistence.metamodel.EntityType;
-import javax.persistence.metamodel.ListAttribute;
-import javax.persistence.metamodel.PluralAttribute;
-import javax.persistence.metamodel.SingularAttribute;
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.text.ParseException;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -17,7 +13,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.metamodel.Attribute;
+import javax.persistence.metamodel.EntityType;
+import javax.persistence.metamodel.ListAttribute;
+import javax.persistence.metamodel.PluralAttribute;
+import javax.persistence.metamodel.SingularAttribute;
 
+import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.support.Repositories;
@@ -34,6 +37,8 @@ import org.springframework.web.context.WebApplicationContext;
 @Controller
 @RequestMapping("/java-admin")
 public class JavaAdminController {
+    private static final String[] DATE_PARSE_PATTERNS = {"dd.MM.yyyy", "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss.S"};
+
     @Autowired
     private EntityManagerFactory entityManagerFactory;
 
@@ -150,7 +155,7 @@ public class JavaAdminController {
     }
 
     @PostMapping(value = "/edit/{entityName}/{id}")
-    public String edit(@PathVariable String entityName, @PathVariable Long id, @RequestBody MultiValueMap<String,String> formData) throws NoSuchFieldException, IllegalAccessException {
+    public String edit(@PathVariable String entityName, @PathVariable Long id, @RequestBody MultiValueMap<String,String> formData) throws NoSuchFieldException, IllegalAccessException, ParseException {
         final EntityType<?> entity = getEntityType(entityName);
 
         final JpaRepository repository = getJpaRepository(entity);
@@ -165,7 +170,7 @@ public class JavaAdminController {
     }
 
     @PostMapping(value = "/create/{entityName}")
-    public String create(@PathVariable String entityName, @RequestBody MultiValueMap<String,String> formData, Model model) throws NoSuchFieldException, IllegalAccessException, InstantiationException {
+    public String create(@PathVariable String entityName, @RequestBody MultiValueMap<String,String> formData) throws NoSuchFieldException, IllegalAccessException, InstantiationException, ParseException {
         final EntityType<?> entity = getEntityType(entityName);
 
         final JpaRepository repository = getJpaRepository(entity);
@@ -179,7 +184,7 @@ public class JavaAdminController {
         return "redirect:/java-admin/list/" + entityName;
     }
 
-    private void fillObject(@RequestBody MultiValueMap<String, String> formData, EntityType<?> entity, Object object) throws NoSuchFieldException, IllegalAccessException {
+    private void fillObject(@RequestBody MultiValueMap<String, String> formData, EntityType<?> entity, Object object) throws NoSuchFieldException, IllegalAccessException, ParseException {
         final Class<?> aClass = object.getClass();
 
         for (Map.Entry<String, List<String>> entry : formData.entrySet()) {
@@ -192,7 +197,9 @@ public class JavaAdminController {
 
                 if (!(field.get(object) == null && value.equals("null"))) {
                     final Class<?> declaringClass = field.getType();
-                    if (declaringClass.equals(Long.class) || declaringClass.equals(long.class)) {
+                    if (declaringClass.equals(Date.class)) {
+                        field.set(object, DateUtils.parseDate(value, DATE_PARSE_PATTERNS));
+                    } else if (declaringClass.equals(Long.class) || declaringClass.equals(long.class)) {
                         field.set(object, Long.parseLong(value));
                     } else if (declaringClass.equals(Integer.class) || declaringClass.equals(int.class)) {
                         field.set(object, Integer.parseInt(value));

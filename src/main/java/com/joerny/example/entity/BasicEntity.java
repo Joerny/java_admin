@@ -1,11 +1,14 @@
 package com.joerny.example.entity;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
+import java.util.Date;
+import java.util.List;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import java.util.List;
 
 @Entity
 public class BasicEntity {
@@ -14,6 +17,8 @@ public class BasicEntity {
     private Long id;
 
     private String simpleText;
+
+    private Date simpleDate;
 
     @ElementCollection(targetClass = SimpleEnum.class)
     private List<SimpleEnum> simpleEnum;
@@ -40,5 +45,15 @@ public class BasicEntity {
 
     public void setSimpleEnum(List<SimpleEnum> simpleEnum) {
         this.simpleEnum = simpleEnum;
+    }
+
+    @SuppressFBWarnings("EI_EXPOSE_REP")
+    public Date getSimpleDate() {
+        return simpleDate;
+    }
+
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
+    public void setSimpleDate(Date simpleDate) {
+        this.simpleDate = simpleDate;
     }
 }
