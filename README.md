@@ -29,12 +29,13 @@ A simple [Spring Boot](https://projects.spring.io/spring-boot/) web application 
 mvn spring-boot:run
 ```
 
-It runs under ``localhost:8080``.
+It runs under ``localhost:8080``. You can see the overview of the enities by calling ``localhost:8080/java-admin/overview``.
 
 ## Release History
 
 * 0.1
     * Added support for ``java.util.Date``
+    * Cleanup in JavaSCript code
 * 0.0.1
     * Initial release
 
