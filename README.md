@@ -35,7 +35,8 @@ It runs under ``localhost:8080``. You can see the overview of the enities by cal
 
 * 0.1
     * Added support for ``java.util.Date``
-    * Cleanup in JavaSCript code
+    * Cleanup in HTML code and structure
+    * Better handling of NULL values
 * 0.0.1
     * Initial release
 

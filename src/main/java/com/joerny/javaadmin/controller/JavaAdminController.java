@@ -127,7 +127,7 @@ public class JavaAdminController {
         }
 
 
-        final List names = new LinkedList(idNames);
+        final List<String> names = new LinkedList<>(idNames);
         names.addAll(attributeNames);
         names.addAll(multiAttributeNames);
 
@@ -191,11 +191,13 @@ public class JavaAdminController {
             final String key = entry.getKey();
             if (key.startsWith(aClass.getSimpleName())) {
                 final String[] split = key.split("\\.");
-                Attribute attribute = entity.getAttribute(split[1]);
+                final Attribute attribute = entity.getAttribute(split[1]);
                 final Field field = getField(aClass, attribute.getName());
                 final String value = entry.getValue().get(0);
 
-                if (!(field.get(object) == null && value.equals("null"))) {
+                if (split.length == 3 && split[2].equals("null_value")) {
+                    field.set(object, null);
+                } else {
                     final Class<?> declaringClass = field.getType();
                     if (declaringClass.equals(Date.class)) {
                         field.set(object, DateUtils.parseDate(value, DATE_PARSE_PATTERNS));
@@ -236,10 +238,8 @@ public class JavaAdminController {
         for (final Object attr : attributes) {
             final SingularAttribute attribute = (SingularAttribute) attr;
             final Field field = getField(aClass, attribute.getName());
-            if (attribute.isId()) {
-                model.addAttribute("id", field.get(object));
-            } else {
-                fields.put(attribute.getName(), Objects.toString(field.get(object)));
+            if (!attribute.isId()) {
+                fields.put(attribute.getName(), Objects.toString(field.get(object), null));
             }
         }
 
@@ -262,24 +262,24 @@ public class JavaAdminController {
     }
 
     @GetMapping(value = "/edit/{entityName}/{id}")
-    public String show(@PathVariable String entityName, @PathVariable Long id, Model model) throws NoSuchFieldException, IllegalAccessException {
+    public String show(@PathVariable final String entityName, @PathVariable final Long id, final Model model) throws NoSuchFieldException, IllegalAccessException {
         final EntityType<?> entity = getEntityType(entityName);
 
         final JpaRepository repository = getJpaRepository(entity);
 
-        Object object = repository.findOne(id);
+        final Object object = repository.findOne(id);
 
         final Map<String, Object> fields = new HashMap<>();
         final Class<?> aClass = object.getClass();
-        for (Object attr : entity.getDeclaredSingularAttributes()) {
-            SingularAttribute attribute = (SingularAttribute) attr;
+        for (final Object attr : entity.getDeclaredSingularAttributes()) {
+            final SingularAttribute attribute = (SingularAttribute) attr;
             final Field field = getField(aClass, attribute.getName());
             if (!attribute.isId()) {
-                fields.put(attribute.getName(), Objects.toString(field.get(object)));
+                fields.put(attribute.getName(), Objects.toString(field.get(object), null));
             }
         }
 
-        for (Object attr : entity.getDeclaredPluralAttributes()) {
+        for (final Object attr : entity.getDeclaredPluralAttributes()) {
             PluralAttribute attribute = (PluralAttribute) attr;
             final Field field = getField(aClass, attribute.getName());
 

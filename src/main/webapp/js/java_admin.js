@@ -2,10 +2,10 @@ function deleteField(fieldName, fieldId) {
     var inputField = document.getElementById(fieldId);
 
     var container = document.getElementById(fieldName);
-    container.removeChild(inputField)
+    container.removeChild(inputField);
 }
 
-function addField(fieldName, i){
+function addField(fieldName, i) {
     var input = document.createElement("input");
     input.type = "text";
     input.name = fieldName;
@@ -26,4 +26,14 @@ function addField(fieldName, i){
 
     var container = document.getElementById(fieldName);
     container.appendChild(inputContainer);
+}
+
+function modifyInput(fieldName) {
+    var checkbox = document.getElementsByName(fieldName + ".null_value").item(0);
+
+    var input = document.getElementsByName(fieldName).item(0);
+    input.disabled = checkbox.checked;
+    if (input.disabled) {
+        input.value = "";
+    }
 }
