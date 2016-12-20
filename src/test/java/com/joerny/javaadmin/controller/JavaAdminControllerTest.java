@@ -1,7 +1,11 @@
 package com.joerny.javaadmin.controller;
 
 import com.joerny.JavaAdminApplication;
+import com.joerny.example.entity.BasicEntity;
 
+import java.util.Set;
+
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,22 +29,34 @@ public class JavaAdminControllerTest {
     private static final String OVERVIEW_URI = "/java-admin/overview";
     private static final String OVERVIEW_JSP_URL = "/java-admin/overview.jsp";
 
+    private static final String LIST_URI = "/java-admin/list/";
+    private static final String LIST_JSP_URL = "/java-admin/list.jsp";
+
     @Autowired
-    private WebApplicationContext _wac;
-    private MockMvc _mockMvc;
+    private WebApplicationContext wac;
+    private MockMvc mockMvc;
 
     @Before
     public void setUp() {
-        _mockMvc = MockMvcBuilders.webAppContextSetup(_wac).build();
+        mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
     }
 
     public MockMvc getMockMvc() {
-        return _mockMvc;
+        return mockMvc;
     }
 
     @Test
     public void overview() throws Exception {
         final ResultActions getResult = getMockMvc().perform(MockMvcRequestBuilders.get(OVERVIEW_URI));
         getResult.andExpect(MockMvcResultMatchers.forwardedUrl(OVERVIEW_JSP_URL));
+        getResult.andExpect(MockMvcResultMatchers.model().attribute("entities", Matchers.any(Set.class)));
+        getResult.andExpect(MockMvcResultMatchers.model().attribute("entities", Matchers.hasSize(1)));
+    }
+
+    @Test
+    public void list() throws Exception {
+        final ResultActions getResult = getMockMvc().perform(MockMvcRequestBuilders.get(LIST_URI + BasicEntity.class.getSimpleName()));
+        getResult.andExpect(MockMvcResultMatchers.forwardedUrl(LIST_JSP_URL));
+        getResult.andExpect(MockMvcResultMatchers.model().attribute("command", Matchers.notNullValue()));
     }
 }
