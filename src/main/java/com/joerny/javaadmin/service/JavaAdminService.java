@@ -296,6 +296,16 @@ public class JavaAdminService {
         repository.saveAndFlush(object);
     }
 
+    public void deleteEntity(final String entityName, final Long id) {
+        final Type<?> entity = getEntityType(entityName);
+
+        final JpaRepository repository = getJpaRepository(entity);
+
+        final Object object = repository.findOne(id);
+
+        repository.delete(object);
+    }
+
     public void fillObject(final Map<String, List<String>> formData, final EntityType<?> entity, final Object object)
             throws NoSuchFieldException, IllegalAccessException, ParseException {
         final Class<?> aClass = object.getClass();
