@@ -1,5 +1,7 @@
 package com.joerny.javaadmin.service;
 
+import com.joerny.javaadmin.controller.EntityInformation;
+
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -22,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.support.Repositories;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.context.WebApplicationContext;
 
 @Service
@@ -148,6 +151,25 @@ public class JavaAdminService {
         return entities;
     }
 
+    public Map<String, List<?>> getChildEntities(final String entityName) throws IllegalAccessException, InstantiationException, NoSuchFieldException {
+        final EntityType<?> entity = getEntityType(entityName);
+
+        final Map<String, List<?>> childEntities = new HashMap<>();
+
+        final Set attributes = entity.getDeclaredSingularAttributes();
+
+        for (final Object attr : attributes) {
+            final SingularAttribute attribute = (SingularAttribute) attr;
+
+            if (isEntity(attribute.getJavaType())) {
+                final List<EntityInformation> childInformation = getEntityInformation(attribute.getJavaType());
+                childEntities.put(attribute.getName(), childInformation);
+            }
+        }
+
+        return childEntities;
+    }
+
     public JpaRepository<?, ?> getJpaRepository(final Type<?> entity) {
         return getJpaRepository(entity.getJavaType());
     }
@@ -162,6 +184,61 @@ public class JavaAdminService {
         final Field field = aClass.getDeclaredField(name); //NoSuchFieldException
         AccessController.doPrivileged(new FieldAccessPrivilegedAction(field));
         return field;
+    }
+
+    public boolean isEntity(final Class<?> clazz) {
+        boolean check;
+        try {
+            entityManagerFactory.getMetamodel().entity(clazz);
+            check = true;
+        } catch (IllegalArgumentException e) {
+            check = false;
+        }
+        return check;
+    }
+
+    public List<EntityInformation> getEntityInformation(final Class<?> javaType) throws NoSuchFieldException, IllegalAccessException {
+        final JpaRepository fieldRepository = getJpaRepository(javaType);
+        final List children = fieldRepository.findAll();
+        final EntityType<?> entity = entityManagerFactory.getMetamodel().entity(javaType);
+        SingularAttribute id = null;
+        for (final Object attr : entity.getDeclaredSingularAttributes()) {
+            final SingularAttribute attribute = (SingularAttribute) attr;
+            if (attribute.isId()) {
+                id = attribute;
+            }
+        }
+        final List<EntityInformation> information = new ArrayList<>(children.size());
+        for (final Object child : children) {
+            final Field field = getField(javaType, id.getName());
+            information.add(new EntityInformation(field.get(child), child.toString()));
+        }
+        return information;
+    }
+
+    public Map<String, Object> getFieldValues(@PathVariable final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
+        final EntityType<?> entity = getEntityType(entityName);
+
+        final Object object = entity.getJavaType().newInstance();
+
+        final Map<String, Object> fields = new HashMap<>();
+        final Set attributes = entity.getDeclaredSingularAttributes();
+        final Class<?> aClass = object.getClass();
+        for (final Object attr : attributes) {
+            final SingularAttribute attribute = (SingularAttribute) attr;
+            final Field field = getField(aClass, attribute.getName());
+            if (!attribute.isId()) {
+                fields.put(attribute.getName(), Objects.toString(field.get(object), null));
+            }
+        }
+
+        final Set multiAttributes = entity.getDeclaredPluralAttributes();
+        for (final Object attr : multiAttributes) {
+            final Attribute attribute = (Attribute) attr;
+            fields.put(attribute.getName(), new LinkedList());
+        }
+
+        return fields;
     }
 
     private static class FieldAccessPrivilegedAction implements PrivilegedAction {

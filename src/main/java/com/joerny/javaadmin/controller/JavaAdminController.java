@@ -4,7 +4,6 @@ import com.joerny.javaadmin.service.JavaAdminService;
 
 import java.lang.reflect.Field;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -12,8 +11,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import javax.persistence.EntityManagerFactory;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.ListAttribute;
@@ -40,9 +37,6 @@ public class JavaAdminController {
 
     @Autowired
     private JavaAdminService javaAdminService;
-
-    @Autowired
-    private EntityManagerFactory entityManagerFactory;
 
     @GetMapping("/overview")
     public String overview(final Model model) {
@@ -71,6 +65,14 @@ public class JavaAdminController {
         model.addAttribute("command", command);
 
         return "java-admin/list";
+    }
+
+    @GetMapping("/create/{entityName}")
+    public String create(@PathVariable final String entityName, final Model model) throws NoSuchFieldException, IllegalAccessException, InstantiationException {
+        model.addAttribute("childEntities", javaAdminService.getChildEntities(entityName));
+        model.addAttribute("fields", javaAdminService.getFieldValues(entityName));
+
+        return "java-admin/create";
     }
 
     @GetMapping(value = "/delete/{entityName}/{id}")
@@ -152,7 +154,7 @@ public class JavaAdminController {
                         }
                     } else if (declaringClass.equals(String.class)) {
                         field.set(object, value);
-                    } else if (isEntity(declaringClass)) {
+                    } else if (javaAdminService.isEntity(declaringClass)) {
                         final JpaRepository fieldRepository = javaAdminService.getJpaRepository(declaringClass);
                         final Object child = fieldRepository.getOne(Long.parseLong(value));
                         field.set(object, child);
@@ -162,42 +164,6 @@ public class JavaAdminController {
                 }
             }
         }
-    }
-
-    @GetMapping(value = "/create/{entityName}")
-    public String create(@PathVariable final String entityName, final Model model) throws NoSuchFieldException, IllegalAccessException, InstantiationException {
-        final EntityType<?> entity = javaAdminService.getEntityType(entityName);
-
-        final Object object = entity.getJavaType().newInstance();
-
-        final Map<String, List<?>> childEntities = new HashMap<>();
-
-        final Map<String, Object> fields = new HashMap<>();
-        final Set attributes = entity.getDeclaredSingularAttributes();
-        final Class<?> aClass = object.getClass();
-        for (final Object attr : attributes) {
-            final SingularAttribute attribute = (SingularAttribute) attr;
-            final Field field = JavaAdminService.getField(aClass, attribute.getName());
-            if (!attribute.isId()) {
-                fields.put(attribute.getName(), Objects.toString(field.get(object), null));
-            }
-            if (isEntity(field.getType())) {
-                final List<EntityInformation> childInformation = getEntityInformation(field.getType());
-                childEntities.put(attribute.getName(), childInformation);
-            }
-        }
-
-        final Set multiAttributes = entity.getDeclaredPluralAttributes();
-        for (final Object attr : multiAttributes) {
-            PluralAttribute attribute = (PluralAttribute) attr;
-            fields.put(attribute.getName(), new LinkedList());
-        }
-
-        model.addAttribute("childEntities", childEntities);
-        model.addAttribute("fields", fields);
-        model.addAttribute("entity", entity);
-
-        return "java-admin/create";
     }
 
     @GetMapping(value = "/edit/{entityName}/{id}")
@@ -218,8 +184,8 @@ public class JavaAdminController {
             if (!attribute.isId()) {
                 fields.put(attribute.getName(), Objects.toString(field.get(object), null));
             }
-            if (isEntity(field.getType())) {
-                final List<EntityInformation> childInformation = getEntityInformation(field.getType());
+            if (javaAdminService.isEntity(field.getType())) {
+                final List<EntityInformation> childInformation = javaAdminService.getEntityInformation(field.getType());
                 childEntities.put(attribute.getName(), childInformation);
             }
         }
@@ -247,33 +213,4 @@ public class JavaAdminController {
         return "java-admin/edit";
     }
 
-    private List<EntityInformation> getEntityInformation(final Class<?> javaType) throws NoSuchFieldException, IllegalAccessException {
-        final JpaRepository fieldRepository = javaAdminService.getJpaRepository(javaType);
-        final List children = fieldRepository.findAll();
-        final EntityType<?> entity = entityManagerFactory.getMetamodel().entity(javaType);
-        SingularAttribute id = null;
-        for (final Object attr : entity.getDeclaredSingularAttributes()) {
-            final SingularAttribute attribute = (SingularAttribute) attr;
-            if (attribute.isId()) {
-                id = attribute;
-            }
-        }
-        final List<EntityInformation> information = new ArrayList<>(children.size());
-        for (final Object child : children) {
-            final Field field = JavaAdminService.getField(javaType, id.getName());
-            information.add(new EntityInformation(field.get(child), child.toString()));
-        }
-        return information;
-    }
-
-    private boolean isEntity(final Class<?> clazz) {
-        boolean check;
-        try {
-            entityManagerFactory.getMetamodel().entity(clazz);
-            check = true;
-        } catch (IllegalArgumentException e) {
-            check = false;
-        }
-        return check;
-    }
 }
