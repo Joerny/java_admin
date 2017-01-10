@@ -1,5 +1,7 @@
 package com.joerny.javaadmin.controller;
 
+import com.joerny.javaadmin.service.JavaAdminService;
+
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -32,16 +34,17 @@ public class JavaAdminController {
     private static final String[] DATE_PARSE_PATTERNS = {"dd.MM.yyyy", "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss.S"};
 
     @Autowired
+    private JavaAdminService javaAdminService;
+
+    @Autowired
     private EntityManagerFactory entityManagerFactory;
 
     @Autowired
     private WebApplicationContext appContext;
 
-    @GetMapping(value = "/overview")
-    public String overview(Model model) {
-        Set<EntityType<?>> entities = entityManagerFactory.getMetamodel().getEntities();
-
-        model.addAttribute("entities", entities);
+    @GetMapping("/overview")
+    public String overview(final Model model) {
+        model.addAttribute("entities", javaAdminService.getEntityNames());
 
         return "java-admin/overview";
     }

@@ -1,6 +1,4 @@
 <!DOCTYPE html>
-<%@ page import="javax.persistence.metamodel.EntityType,
-                 java.util.Set" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page session="false" %>
 <html>
@@ -10,11 +8,11 @@
 <body>
     <h1>Overview</h1>
 <%
-    final Set<EntityType<?>> entities = (Set<EntityType<?>>) request.getAttribute("entities");
+    final Iterable<String> entityNames = (Iterable<String>) request.getAttribute("entities");
 
-    for (EntityType<?> entity : entities) {
+    for (final String name : entityNames) {
 %>
-    <a href="/java-admin/list/<%= entity.getName() %>"><%= entity.getName() %></a><br>
+    <a href="/java-admin/list/<%= name %>"><%= name %></a><br>
 <%
     }
 %>

@@ -3,7 +3,7 @@ package com.joerny.javaadmin.controller;
 import com.joerny.JavaAdminApplication;
 import com.joerny.example.entity.BasicEntity;
 
-import java.util.Set;
+import java.util.Collection;
 
 import org.hamcrest.Matchers;
 import org.junit.Before;
@@ -49,7 +49,7 @@ public class JavaAdminControllerTest {
     public void overview() throws Exception {
         final ResultActions getResult = getMockMvc().perform(MockMvcRequestBuilders.get(OVERVIEW_URI));
         getResult.andExpect(MockMvcResultMatchers.forwardedUrl(OVERVIEW_JSP_URL));
-        getResult.andExpect(MockMvcResultMatchers.model().attribute("entities", Matchers.any(Set.class)));
+        getResult.andExpect(MockMvcResultMatchers.model().attribute("entities", Matchers.any(Collection.class)));
         getResult.andExpect(MockMvcResultMatchers.model().attribute("entities", Matchers.hasSize(2)));
     }
 
