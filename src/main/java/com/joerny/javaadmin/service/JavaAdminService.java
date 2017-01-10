@@ -306,7 +306,7 @@ public class JavaAdminService {
         repository.delete(object);
     }
 
-    public void fillObject(final Map<String, List<String>> formData, final EntityType<?> entity, final Object object)
+    private void fillObject(final Map<String, List<String>> formData, final EntityType<?> entity, final Object object)
             throws NoSuchFieldException, IllegalAccessException, ParseException {
         final Class<?> aClass = object.getClass();
 
