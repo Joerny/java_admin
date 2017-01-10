@@ -5,21 +5,16 @@ import com.joerny.javaadmin.controller.EntityInformation;
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.text.ParseException;
+import java.util.*;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.EntityType;
+import javax.persistence.metamodel.ListAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.Type;
 
+import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.support.Repositories;
@@ -29,6 +24,8 @@ import org.springframework.web.context.WebApplicationContext;
 
 @Service
 public class JavaAdminService {
+    private static final String[] DATE_PARSE_PATTERNS = {"dd.MM.yyyy", "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss.S"};
+
     @Autowired
     private EntityManagerFactory entityManagerFactory;
 
@@ -174,7 +171,7 @@ public class JavaAdminService {
         return getJpaRepository(entity.getJavaType());
     }
 
-    public JpaRepository<?, ?> getJpaRepository(final Class<?> javaType) {
+    private JpaRepository<?, ?> getJpaRepository(final Class<?> javaType) {
         final Repositories repositories = new Repositories(appContext);
 
         return (JpaRepository<?, ?>) repositories.getRepositoryFor(javaType);
@@ -239,6 +236,67 @@ public class JavaAdminService {
         }
 
         return fields;
+    }
+
+    public void saveEntity(final String entityName, final Map<String, List<String>> formData)
+            throws InstantiationException, IllegalAccessException, NoSuchFieldException, ParseException {
+        final EntityType<?> entity = getEntityType(entityName);
+
+        final JpaRepository repository = getJpaRepository(entity);
+
+        final Object object = entity.getJavaType().newInstance();
+
+        fillObject(formData, entity, object);
+
+        repository.save(object);
+    }
+
+    public void fillObject(final Map<String, List<String>> formData, final EntityType<?> entity, final Object object) throws NoSuchFieldException, IllegalAccessException, ParseException {
+        final Class<?> aClass = object.getClass();
+
+        for (final Map.Entry<String, List<String>> entry : formData.entrySet()) {
+            final String key = entry.getKey();
+            if (key.startsWith(aClass.getSimpleName())) {
+                final String[] split = key.split("\\.");
+                final Attribute attribute = entity.getAttribute(split[1]);
+                final Field field = getField(aClass, attribute.getName());
+                final String value = entry.getValue().get(0);
+
+                if (split.length == 3 && split[2].equals("null_value")) {
+                    field.set(object, null);
+                } else {
+                    final Class<?> declaringClass = field.getType();
+                    if (declaringClass.equals(Date.class)) {
+                        field.set(object, DateUtils.parseDate(value, DATE_PARSE_PATTERNS));
+                    } else if (declaringClass.equals(Long.class) || declaringClass.equals(long.class)) {
+                        field.set(object, Long.parseLong(value));
+                    } else if (declaringClass.equals(Integer.class) || declaringClass.equals(int.class)) {
+                        field.set(object, Integer.parseInt(value));
+                    } else if (declaringClass.equals(Boolean.class) || declaringClass.equals(boolean.class)) {
+                        field.set(object, Boolean.parseBoolean(value));
+                    } else if (List.class.isAssignableFrom(declaringClass)) {
+                        final ListAttribute listAttribute = entity.getDeclaredList(attribute.getName());
+                        if (listAttribute.getElementType().getJavaType().isEnum()) {
+                            List values = new LinkedList();
+                            for (String entryValue : entry.getValue()) {
+                                values.add(Enum.valueOf(listAttribute.getElementType().getJavaType(), entryValue));
+                            }
+                            field.set(object, values);
+                        } else {
+                            field.set(object, entry.getValue());
+                        }
+                    } else if (declaringClass.equals(String.class)) {
+                        field.set(object, value);
+                    } else if (isEntity(declaringClass)) {
+                        final JpaRepository fieldRepository = getJpaRepository(declaringClass);
+                        final Object child = fieldRepository.getOne(Long.parseLong(value));
+                        field.set(object, child);
+                    } else {
+                        throw new IllegalStateException("Type could not be handled!");
+                    }
+                }
+            }
+        }
     }
 
     private static class FieldAccessPrivilegedAction implements PrivilegedAction {
