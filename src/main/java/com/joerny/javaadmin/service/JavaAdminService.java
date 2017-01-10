@@ -11,6 +11,7 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.ListAttribute;
+import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.Type;
 
@@ -19,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.support.Repositories;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.context.WebApplicationContext;
 
 @Service
@@ -213,21 +213,12 @@ public class JavaAdminService {
         return information;
     }
 
-    public Map<String, Object> getFieldValues(@PathVariable final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
+    public Map<String, Object> getFieldValues(final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
         final EntityType<?> entity = getEntityType(entityName);
 
         final Object object = entity.getJavaType().newInstance();
 
-        final Map<String, Object> fields = new HashMap<>();
-        final Set attributes = entity.getDeclaredSingularAttributes();
-        final Class<?> aClass = object.getClass();
-        for (final Object attr : attributes) {
-            final SingularAttribute attribute = (SingularAttribute) attr;
-            final Field field = getField(aClass, attribute.getName());
-            if (!attribute.isId()) {
-                fields.put(attribute.getName(), Objects.toString(field.get(object), null));
-            }
-        }
+        final Map<String, Object> fields = getSingleAttrFieldValues(entity, object);
 
         final Set multiAttributes = entity.getDeclaredPluralAttributes();
         for (final Object attr : multiAttributes) {
@@ -235,6 +226,47 @@ public class JavaAdminService {
             fields.put(attribute.getName(), new LinkedList());
         }
 
+        return fields;
+    }
+
+    public Map<String, Object> getFieldValues(final String entityName, final Long id) throws NoSuchFieldException, IllegalAccessException {
+        final EntityType<?> entity = getEntityType(entityName);
+
+        final JpaRepository repository = getJpaRepository(entity);
+
+        final Object object = repository.findOne(id);
+
+        final Map<String, Object> fields = getSingleAttrFieldValues(entity, object);
+
+        for (final Object attr : entity.getDeclaredPluralAttributes()) {
+            final PluralAttribute attribute = (PluralAttribute) attr;
+            final Field field = getField(object.getClass(), attribute.getName());
+
+            final List<String> values = new LinkedList<>();
+
+            if (Collection.class.isAssignableFrom(object.getClass())) {
+                final Collection collection = (Collection) field.get(object);
+                for (Object value : collection) {
+                    values.add(Objects.toString(value));
+                }
+            }
+
+            fields.put(attribute.getName(), values);
+        }
+        return fields;
+    }
+
+    private static Map<String, Object> getSingleAttrFieldValues(final EntityType<?> entity, final Object object)
+            throws NoSuchFieldException, IllegalAccessException {
+        final Map<String, Object> fields = new HashMap<>();
+        final Class<?> aClass = object.getClass();
+        for (final Object attr : entity.getDeclaredSingularAttributes()) {
+            final SingularAttribute attribute = (SingularAttribute) attr;
+            final Field field = getField(aClass, attribute.getName());
+            if (!attribute.isId()) {
+                fields.put(attribute.getName(), Objects.toString(field.get(object), null));
+            }
+        }
         return fields;
     }
 
@@ -251,7 +283,8 @@ public class JavaAdminService {
         repository.save(object);
     }
 
-    public void fillObject(final Map<String, List<String>> formData, final EntityType<?> entity, final Object object) throws NoSuchFieldException, IllegalAccessException, ParseException {
+    public void fillObject(final Map<String, List<String>> formData, final EntityType<?> entity, final Object object)
+            throws NoSuchFieldException, IllegalAccessException, ParseException {
         final Class<?> aClass = object.getClass();
 
         for (final Map.Entry<String, List<String>> entry : formData.entrySet()) {
