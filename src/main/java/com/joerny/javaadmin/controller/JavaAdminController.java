@@ -4,15 +4,7 @@ import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.ParseException;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.EntityType;
@@ -145,9 +137,9 @@ public class JavaAdminController {
     public String delete(@PathVariable String entityName, @PathVariable Long id) throws NoSuchFieldException, IllegalAccessException {
         final EntityType<?> entity = getEntityType(entityName);
 
-        final JpaRepository repository = getJpaRepository(entity);
+        final JpaRepository repository = getJpaRepository((EntityType<?>) entity);
 
-        Object object = repository.findOne(id);
+        final Object object = repository.findOne(id);
 
         repository.delete(object);
 
@@ -158,7 +150,7 @@ public class JavaAdminController {
     public String edit(@PathVariable String entityName, @PathVariable Long id, @RequestBody MultiValueMap<String,String> formData) throws NoSuchFieldException, IllegalAccessException, ParseException {
         final EntityType<?> entity = getEntityType(entityName);
 
-        final JpaRepository repository = getJpaRepository(entity);
+        final JpaRepository repository = getJpaRepository((EntityType<?>) entity);
 
         Object object = repository.findOne(id);
 
@@ -173,7 +165,7 @@ public class JavaAdminController {
     public String create(@PathVariable String entityName, @RequestBody MultiValueMap<String,String> formData) throws NoSuchFieldException, IllegalAccessException, InstantiationException, ParseException {
         final EntityType<?> entity = getEntityType(entityName);
 
-        final JpaRepository repository = getJpaRepository(entity);
+        final JpaRepository repository = getJpaRepository((EntityType<?>) entity);
 
         Object object = entity.getJavaType().newInstance();
 
@@ -184,10 +176,10 @@ public class JavaAdminController {
         return "redirect:/java-admin/list/" + entityName;
     }
 
-    private void fillObject(@RequestBody MultiValueMap<String, String> formData, EntityType<?> entity, Object object) throws NoSuchFieldException, IllegalAccessException, ParseException {
+    private void fillObject(MultiValueMap<String, String> formData, EntityType<?> entity, Object object) throws NoSuchFieldException, IllegalAccessException, ParseException {
         final Class<?> aClass = object.getClass();
 
-        for (Map.Entry<String, List<String>> entry : formData.entrySet()) {
+        for (final Map.Entry<String, List<String>> entry : formData.entrySet()) {
             final String key = entry.getKey();
             if (key.startsWith(aClass.getSimpleName())) {
                 final String[] split = key.split("\\.");
@@ -218,8 +210,14 @@ public class JavaAdminController {
                         } else {
                             field.set(object, entry.getValue());
                         }
-                    } else {
+                    } else if (declaringClass.equals(String.class)) {
                         field.set(object, value);
+                    } else if (isEntity(declaringClass)) {
+                        final JpaRepository fieldRepository = getJpaRepository(declaringClass);
+                        final Object child = fieldRepository.getOne(Long.parseLong(value));
+                        field.set(object, child);
+                    } else {
+                        throw new IllegalStateException("Type could not be handled!");
                     }
                 }
             }
@@ -232,6 +230,8 @@ public class JavaAdminController {
 
         final Object object = entity.getJavaType().newInstance();
 
+        final Map<String, List<?>> childEntities = new HashMap<>();
+
         final Map<String, Object> fields = new HashMap<>();
         final Set attributes = entity.getDeclaredSingularAttributes();
         final Class<?> aClass = object.getClass();
@@ -241,6 +241,10 @@ public class JavaAdminController {
             if (!attribute.isId()) {
                 fields.put(attribute.getName(), Objects.toString(field.get(object), null));
             }
+            if (isEntity(field.getType())) {
+                final List<EntityInformation> childInformation = getEntityInformation(field.getType());
+                childEntities.put(attribute.getName(), childInformation);
+            }
         }
 
         final Set multiAttributes = entity.getDeclaredPluralAttributes();
@@ -249,6 +253,7 @@ public class JavaAdminController {
             fields.put(attribute.getName(), new LinkedList());
         }
 
+        model.addAttribute("childEntities", childEntities);
         model.addAttribute("fields", fields);
         model.addAttribute("entity", entity);
 
@@ -269,6 +274,8 @@ public class JavaAdminController {
 
         final Object object = repository.findOne(id);
 
+        final Map<String, List<EntityInformation>> childEntities = new HashMap<>();
+
         final Map<String, Object> fields = new HashMap<>();
         final Class<?> aClass = object.getClass();
         for (final Object attr : entity.getDeclaredSingularAttributes()) {
@@ -277,10 +284,14 @@ public class JavaAdminController {
             if (!attribute.isId()) {
                 fields.put(attribute.getName(), Objects.toString(field.get(object), null));
             }
+            if (isEntity(field.getType())) {
+                final List<EntityInformation> childInformation = getEntityInformation(field.getType());
+                childEntities.put(attribute.getName(), childInformation);
+            }
         }
 
         for (final Object attr : entity.getDeclaredPluralAttributes()) {
-            PluralAttribute attribute = (PluralAttribute) attr;
+            final PluralAttribute attribute = (PluralAttribute) attr;
             final Field field = getField(aClass, attribute.getName());
 
             final List<String> values = new LinkedList<>();
@@ -295,16 +306,40 @@ public class JavaAdminController {
             fields.put(attribute.getName(), values);
         }
 
+        model.addAttribute("childEntities", childEntities);
         model.addAttribute("fields", fields);
         model.addAttribute("entityName", entity.getName());
 
         return "java-admin/edit";
     }
 
-    private JpaRepository getJpaRepository(EntityType<?> entity) {
+    private List<EntityInformation> getEntityInformation(final Class<?> javaType) throws NoSuchFieldException, IllegalAccessException {
+        final JpaRepository fieldRepository = getJpaRepository(javaType);
+        final List children = fieldRepository.findAll();
+        final EntityType<?> entity = entityManagerFactory.getMetamodel().entity(javaType);
+        SingularAttribute id = null;
+        for (final Object attr : entity.getDeclaredSingularAttributes()) {
+            final SingularAttribute attribute = (SingularAttribute) attr;
+            if (attribute.isId()) {
+                id = attribute;
+            }
+        }
+        final List<EntityInformation> information = new ArrayList<>(children.size());
+        for (final Object child : children) {
+            final Field field = getField(javaType, id.getName());
+            information.add(new EntityInformation(field.get(child), child.toString()));
+        }
+        return information;
+    }
+
+    private JpaRepository getJpaRepository(final EntityType<?> entity) {
+        return getJpaRepository(entity.getJavaType());
+    }
+
+    private JpaRepository getJpaRepository(final Class<?> javaType) {
         Repositories repositories = new Repositories(appContext);
 
-        return (JpaRepository) repositories.getRepositoryFor(entity.getJavaType());
+        return (JpaRepository) repositories.getRepositoryFor(javaType);
     }
 
     private EntityType<?> getEntityType(final String entityName) {
@@ -322,7 +357,7 @@ public class JavaAdminController {
     private static class FieldAccessPrivilegedAction implements PrivilegedAction {
         private final Field field;
 
-        public FieldAccessPrivilegedAction(Field field) {
+        public FieldAccessPrivilegedAction(final Field field) {
             this.field = field;
         }
 
@@ -331,5 +366,16 @@ public class JavaAdminController {
             field.setAccessible(true);
             return null;
         }
+    }
+
+    private boolean isEntity(final Class<?> clazz) {
+        boolean check;
+        try {
+            entityManagerFactory.getMetamodel().entity(clazz);
+            check = true;
+        } catch (IllegalArgumentException e) {
+            check = false;
+        }
+        return check;
     }
 }

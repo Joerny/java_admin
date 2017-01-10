@@ -50,7 +50,7 @@ public class JavaAdminControllerTest {
         final ResultActions getResult = getMockMvc().perform(MockMvcRequestBuilders.get(OVERVIEW_URI));
         getResult.andExpect(MockMvcResultMatchers.forwardedUrl(OVERVIEW_JSP_URL));
         getResult.andExpect(MockMvcResultMatchers.model().attribute("entities", Matchers.any(Set.class)));
-        getResult.andExpect(MockMvcResultMatchers.model().attribute("entities", Matchers.hasSize(1)));
+        getResult.andExpect(MockMvcResultMatchers.model().attribute("entities", Matchers.hasSize(2)));
     }
 
     @Test

@@ -1,7 +1,5 @@
 package com.joerny.example.entity;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import java.util.Date;
 import java.util.List;
 import javax.persistence.ElementCollection;
@@ -9,6 +7,9 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.OneToOne;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 @Entity
 public class BasicEntity {
@@ -20,6 +21,9 @@ public class BasicEntity {
 
     private Date simpleDate;
 
+    @OneToOne(targetEntity = ChildEntity.class)
+    private ChildEntity child;
+
     @ElementCollection(targetClass = SimpleEnum.class)
     private List<SimpleEnum> simpleEnum;
 
@@ -27,7 +31,7 @@ public class BasicEntity {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(final Long id) {
         this.id = id;
     }
 
@@ -35,7 +39,7 @@ public class BasicEntity {
         return simpleText;
     }
 
-    public void setSimpleText(String simpleText) {
+    public void setSimpleText(final String simpleText) {
         this.simpleText = simpleText;
     }
 
@@ -43,7 +47,7 @@ public class BasicEntity {
         return simpleEnum;
     }
 
-    public void setSimpleEnum(List<SimpleEnum> simpleEnum) {
+    public void setSimpleEnum(final List<SimpleEnum> simpleEnum) {
         this.simpleEnum = simpleEnum;
     }
 
@@ -53,7 +57,15 @@ public class BasicEntity {
     }
 
     @SuppressFBWarnings("EI_EXPOSE_REP2")
-    public void setSimpleDate(Date simpleDate) {
+    public void setSimpleDate(final Date simpleDate) {
         this.simpleDate = simpleDate;
+    }
+
+    public ChildEntity getChild() {
+        return child;
+    }
+
+    public void setChild(final ChildEntity child) {
+        this.child = child;
     }
 }

@@ -1,19 +1,22 @@
 <%@ page import="java.util.List,
                  java.util.Map,
-                 java.util.Objects" %>
+                 java.util.Objects,
+                 com.joerny.javaadmin.controller.EntityInformation" %>
 <%
     final String entityName = (String) request.getAttribute("entityName");
     final Map<String, List<String>> fields = (Map<String, List<String>>) request.getAttribute("fields");
+    final Map<String, List<EntityInformation>> childEntities = (Map<String, List<EntityInformation>>) request.getAttribute("childEntities");
 %>
 <form method="post">
 <%
     for (final Map.Entry<String, ?> field : fields.entrySet()) {
-        final String fieldIdentifier = entityName + "." + field.getKey();
+        final String fieldName = field.getKey();
+        final String fieldIdentifier = entityName + '.' + fieldName;
 %>
-    <label for="<%= fieldIdentifier %>"><%= field.getKey() %></label>:<br>
+    <label for="<%= fieldIdentifier %>"><%= fieldName %></label>:<br>
 <%
-    final Object fieldValue = field.getValue();
-    if (fieldValue != null && List.class.isAssignableFrom(fieldValue.getClass())) {
+        final Object fieldValue = field.getValue();
+        if (fieldValue != null && List.class.isAssignableFrom(fieldValue.getClass())) {
 %>
     <div id="<%= fieldIdentifier %>">
 <%
@@ -30,6 +33,18 @@
 %>
     </div>
     <a href="#" onclick="addField('<%= fieldIdentifier %>', <%= i %>)">Add field</a><br>
+<%
+        } else if (childEntities.containsKey(fieldName)) {
+%>
+    <select name="<%= fieldIdentifier %>">
+<%
+            for (final EntityInformation information : childEntities.get(fieldName)) {
+%>
+        <option value="<%= information.getId() %>"><%= information.getDescription() %></option>
+<%
+            }
+%>
+    </select>
 <%
         } else {
             final String disabled;
