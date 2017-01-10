@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.Type;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,6 +81,14 @@ public class JavaAdminController {
         return "java-admin/edit";
     }
 
+    @PostMapping(value = "/edit/{entityName}/{id}")
+    public String edit(@PathVariable final String entityName, @PathVariable final Long id, @RequestBody final MultiValueMap<String,String> formData)
+            throws NoSuchFieldException, IllegalAccessException, ParseException {
+        javaAdminService.saveEntity(entityName, id, formData);
+
+        return "redirect:/java-admin/list/" + entityName;
+    }
+
     @GetMapping(value = "/delete/{entityName}/{id}")
     public String delete(@PathVariable String entityName, @PathVariable Long id) throws NoSuchFieldException, IllegalAccessException {
         final Type<?> entity = javaAdminService.getEntityType(entityName);
@@ -91,21 +98,6 @@ public class JavaAdminController {
         final Object object = repository.findOne(id);
 
         repository.delete(object);
-
-        return "redirect:/java-admin/list/" + entityName;
-    }
-
-    @PostMapping(value = "/edit/{entityName}/{id}")
-    public String edit(@PathVariable String entityName, @PathVariable Long id, @RequestBody MultiValueMap<String,String> formData) throws NoSuchFieldException, IllegalAccessException, ParseException {
-        final EntityType<?> entity = javaAdminService.getEntityType(entityName);
-
-        final JpaRepository repository = javaAdminService.getJpaRepository(entity);
-
-        Object object = repository.findOne(id);
-
-        javaAdminService.fillObject(formData, entity, object);
-
-        repository.saveAndFlush(object);
 
         return "redirect:/java-admin/list/" + entityName;
     }

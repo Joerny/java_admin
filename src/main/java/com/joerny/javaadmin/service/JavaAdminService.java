@@ -283,6 +283,19 @@ public class JavaAdminService {
         repository.save(object);
     }
 
+    public void saveEntity(final String entityName, final Long id, final Map<String, List<String>> formData)
+            throws NoSuchFieldException, IllegalAccessException, ParseException {
+        final EntityType<?> entity = getEntityType(entityName);
+
+        final JpaRepository repository = getJpaRepository(entity);
+
+        Object object = repository.findOne(id);
+
+        fillObject(formData, entity, object);
+
+        repository.saveAndFlush(object);
+    }
+
     public void fillObject(final Map<String, List<String>> formData, final EntityType<?> entity, final Object object)
             throws NoSuchFieldException, IllegalAccessException, ParseException {
         final Class<?> aClass = object.getClass();
