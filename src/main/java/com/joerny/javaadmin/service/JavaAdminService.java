@@ -1,19 +1,17 @@
 package com.joerny.javaadmin.service;
 
-import com.joerny.javaadmin.controller.EntityInformation;
+import com.joerny.javaadmin.FieldAccessPrivilegedAction;
 
 import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.text.ParseException;
-import java.util.*;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.metamodel.Attribute;
-import javax.persistence.metamodel.EntityType;
-import javax.persistence.metamodel.ListAttribute;
-import javax.persistence.metamodel.PluralAttribute;
-import javax.persistence.metamodel.SingularAttribute;
-import javax.persistence.metamodel.Type;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,76 +25,32 @@ public class JavaAdminService {
     private static final String[] DATE_PARSE_PATTERNS = {"dd.MM.yyyy", "yyyy/MM/dd", "yyyy/MM/dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss.S"};
 
     @Autowired
-    private EntityManagerFactory entityManagerFactory;
+    private EntityManagerComponent entityManagerComponent;
 
     @Autowired
     private WebApplicationContext appContext;
 
     public Collection<String> getEntityNames() {
-        final Set<EntityType<?>> entities = entityManagerFactory.getMetamodel().getEntities();
-
-        final Collection<String> names = new ArrayList<>(entities.size());
-        for (final EntityType<?> type : entities) {
-            names.add(type.getName());
-        }
-
-        return names;
+        return entityManagerComponent.getEntityNames();
     }
 
     public Collection<String> getIdAttributeNames(final String entityName) {
-        final EntityType<?> entity = getEntityType(entityName);
-
-        final Collection<String> idNames = new LinkedList<>();
-        for (final Object attr : entity.getDeclaredSingularAttributes()) {
-            final SingularAttribute attribute = (SingularAttribute) attr;
-            if (attribute.isId()) {
-                idNames.add(attribute.getName());
-            }
-        }
-        return idNames;
+        return entityManagerComponent.getIdAttributeNames(entityName);
     }
 
     public Collection<String> getSingleAttributeNames(final String entityName) {
-        final EntityType<?> entity = getEntityType(entityName);
-
-        final Collection<String> singleAttributeNames = new LinkedList<>();
-        for (final Object attr : entity.getDeclaredSingularAttributes()) {
-            final SingularAttribute attribute = (SingularAttribute) attr;
-            if (!attribute.isId()) {
-                singleAttributeNames.add(attribute.getName());
-            }
-        }
-        return singleAttributeNames;
+        return entityManagerComponent.getSingleAttributeNames(entityName);
     }
 
     public Collection<String> getMultipleAttributeNames(final String entityName) {
-        final EntityType<?> entity = getEntityType(entityName);
-
-        final Collection<String> multiAttributeNames = new LinkedList<>();
-        for (final Object attr : entity.getDeclaredPluralAttributes()) {
-            final Attribute attribute = (Attribute) attr;
-            multiAttributeNames.add(attribute.getName());
-        }
-        return multiAttributeNames;
-    }
-
-    public EntityType<?> getEntityType(final String entityName) {
-        final Set<EntityType<?>> entities = entityManagerFactory.getMetamodel().getEntities();
-
-        EntityType<?> entity = null;
-        for (final EntityType<?> entityTmp : entities) {
-            if (entityTmp.getName().equals(entityName)) {
-                entity = entityTmp;
-            }
-        }
-        return entity;
+        return entityManagerComponent.getMultipleAttributeNames(entityName);
     }
 
     public Map<String, Map<String, List<String>>> getEntityValues(final String entityName, final Iterable<String> idNames, final Iterable<String> attributeNames,
                                                                   final Iterable<String> multiAttributeNames) throws NoSuchFieldException, IllegalAccessException {
-        final EntityType<?> entity = getEntityType(entityName);
+        final Class<?> entityClass = entityManagerComponent.getEntityClass(entityName);
 
-        final JpaRepository<?, ?> repository = getJpaRepository(entity);
+        final JpaRepository<?, ?> repository = getJpaRepository(entityClass);
 
         final List<?> data = repository.findAll();
 
@@ -107,7 +61,7 @@ public class JavaAdminService {
             final Map<String, List<String>> entityValues = new HashMap<>();
 
             for (final String idName : idNames) {
-                final Field field = getField(datum.getClass(), idName);
+                final Field field = FieldAccessPrivilegedAction.getField(datum.getClass(), idName);
 
                 final List<String> values = new LinkedList<>();
                 values.add(Objects.toString(field.get(datum)));
@@ -118,7 +72,7 @@ public class JavaAdminService {
             }
 
             for (final String name : attributeNames) {
-                final Field field = getField(datum.getClass(), name);
+                final Field field = FieldAccessPrivilegedAction.getField(datum.getClass(), name);
 
                 final List<String> values = new LinkedList<>();
                 values.add(Objects.toString(field.get(datum)));
@@ -127,7 +81,7 @@ public class JavaAdminService {
             }
 
             for (final String name : multiAttributeNames) {
-                final Field field = getField(datum.getClass(), name);
+                final Field field = FieldAccessPrivilegedAction.getField(datum.getClass(), name);
 
                 final List<String> values = new LinkedList<>();
                 final Object object = field.get(datum);
@@ -149,26 +103,15 @@ public class JavaAdminService {
     }
 
     public Map<String, List<?>> getChildEntities(final String entityName) throws IllegalAccessException, InstantiationException, NoSuchFieldException {
-        final EntityType<?> entity = getEntityType(entityName);
-
-        final Map<String, List<?>> childEntities = new HashMap<>();
-
-        final Set attributes = entity.getDeclaredSingularAttributes();
-
-        for (final Object attr : attributes) {
-            final SingularAttribute attribute = (SingularAttribute) attr;
-
-            if (isEntity(attribute.getJavaType())) {
-                final List<EntityInformation> childInformation = getEntityInformation(attribute.getJavaType());
-                childEntities.put(attribute.getName(), childInformation);
-            }
+        final Map<String, Class<?>> childEntityClasses = entityManagerComponent.getChildEntities(entityName);
+        final Map<String, List<?>> childEntityInfos = new HashMap<>(childEntityClasses.size());
+        for (final Map.Entry<String, Class<?>> child : childEntityClasses.entrySet()) {
+            final Class<?> javaType = child.getValue();
+            final JpaRepository fieldRepository = getJpaRepository(javaType);
+            final List children = fieldRepository.findAll();
+            childEntityInfos.put(child.getKey(), entityManagerComponent.getEntityInformation(children, javaType));
         }
-
-        return childEntities;
-    }
-
-    public JpaRepository<?, ?> getJpaRepository(final Type<?> entity) {
-        return getJpaRepository(entity.getJavaType());
+        return childEntityInfos;
     }
 
     private JpaRepository<?, ?> getJpaRepository(final Class<?> javaType) {
@@ -177,136 +120,58 @@ public class JavaAdminService {
         return (JpaRepository<?, ?>) repositories.getRepositoryFor(javaType);
     }
 
-    public static Field getField(final Class<?> aClass, final String name) throws NoSuchFieldException {
-        final Field field = aClass.getDeclaredField(name); //NoSuchFieldException
-        AccessController.doPrivileged(new FieldAccessPrivilegedAction(field));
-        return field;
-    }
-
-    public boolean isEntity(final Class<?> clazz) {
-        boolean check;
-        try {
-            entityManagerFactory.getMetamodel().entity(clazz);
-            check = true;
-        } catch (IllegalArgumentException e) {
-            check = false;
-        }
-        return check;
-    }
-
-    public List<EntityInformation> getEntityInformation(final Class<?> javaType) throws NoSuchFieldException, IllegalAccessException {
-        final JpaRepository fieldRepository = getJpaRepository(javaType);
-        final List children = fieldRepository.findAll();
-        final EntityType<?> entity = entityManagerFactory.getMetamodel().entity(javaType);
-        SingularAttribute id = null;
-        for (final Object attr : entity.getDeclaredSingularAttributes()) {
-            final SingularAttribute attribute = (SingularAttribute) attr;
-            if (attribute.isId()) {
-                id = attribute;
-            }
-        }
-        final List<EntityInformation> information = new ArrayList<>(children.size());
-        for (final Object child : children) {
-            final Field field = getField(javaType, id.getName());
-            information.add(new EntityInformation(field.get(child), child.toString()));
-        }
-        return information;
-    }
-
     public Map<String, Object> getFieldValues(final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
-        final EntityType<?> entity = getEntityType(entityName);
-
-        final Object object = entity.getJavaType().newInstance();
-
-        final Map<String, Object> fields = getSingleAttrFieldValues(entity, object);
-
-        final Set multiAttributes = entity.getDeclaredPluralAttributes();
-        for (final Object attr : multiAttributes) {
-            final Attribute attribute = (Attribute) attr;
-            fields.put(attribute.getName(), new LinkedList());
-        }
-
-        return fields;
+        return entityManagerComponent.getFieldValues(entityName);
     }
 
     public Map<String, Object> getFieldValues(final String entityName, final Long id) throws NoSuchFieldException, IllegalAccessException {
-        final EntityType<?> entity = getEntityType(entityName);
+        final Class<?> entityClass = entityManagerComponent.getEntityClass(entityName);
 
-        final JpaRepository repository = getJpaRepository(entity);
+        final JpaRepository repository = getJpaRepository(entityClass);
 
         final Object object = repository.findOne(id);
 
-        final Map<String, Object> fields = getSingleAttrFieldValues(entity, object);
-
-        for (final Object attr : entity.getDeclaredPluralAttributes()) {
-            final PluralAttribute attribute = (PluralAttribute) attr;
-            final Field field = getField(object.getClass(), attribute.getName());
-
-            final List<String> values = new LinkedList<>();
-
-            if (Collection.class.isAssignableFrom(object.getClass())) {
-                final Collection collection = (Collection) field.get(object);
-                for (Object value : collection) {
-                    values.add(Objects.toString(value));
-                }
-            }
-
-            fields.put(attribute.getName(), values);
-        }
-        return fields;
-    }
-
-    private static Map<String, Object> getSingleAttrFieldValues(final EntityType<?> entity, final Object object)
-            throws NoSuchFieldException, IllegalAccessException {
-        final Map<String, Object> fields = new HashMap<>();
-        final Class<?> aClass = object.getClass();
-        for (final Object attr : entity.getDeclaredSingularAttributes()) {
-            final SingularAttribute attribute = (SingularAttribute) attr;
-            final Field field = getField(aClass, attribute.getName());
-            if (!attribute.isId()) {
-                fields.put(attribute.getName(), Objects.toString(field.get(object), null));
-            }
-        }
-        return fields;
+        return entityManagerComponent.getFieldValues(entityName, object);
     }
 
     public void saveEntity(final String entityName, final Map<String, List<String>> formData)
             throws InstantiationException, IllegalAccessException, NoSuchFieldException, ParseException {
-        final EntityType<?> entity = getEntityType(entityName);
+        final Class<?> entityClass = entityManagerComponent.getEntityClass(entityName);
 
-        final JpaRepository repository = getJpaRepository(entity);
+        final JpaRepository repository = getJpaRepository(entityClass);
 
-        final Object object = entity.getJavaType().newInstance();
+        final Object object = entityClass.newInstance();
 
-        fillObject(formData, entity, object);
+        fillObject(formData, object);
 
         repository.save(object);
     }
 
     public void saveEntity(final String entityName, final Long id, final Map<String, List<String>> formData)
             throws NoSuchFieldException, IllegalAccessException, ParseException {
-        final EntityType<?> entity = getEntityType(entityName);
+        final Class<?> entityClass = entityManagerComponent.getEntityClass(entityName);
 
-        final JpaRepository repository = getJpaRepository(entity);
+        final JpaRepository repository = getJpaRepository(entityClass);
 
         Object object = repository.findOne(id);
 
-        fillObject(formData, entity, object);
+        fillObject(formData, object);
 
         repository.saveAndFlush(object);
     }
 
     public void deleteEntity(final String entityName, final Long id) {
-        final Type<?> entity = getEntityType(entityName);
+        final Class<?> entityClass = entityManagerComponent.getEntityClass(entityName);
 
-        final JpaRepository repository = getJpaRepository(entity);
+        final JpaRepository repository = getJpaRepository(entityClass);
 
         final Object object = repository.findOne(id);
 
         repository.delete(object);
     }
 
-    private void fillObject(final Map<String, List<String>> formData, final EntityType<?> entity, final Object object)
+
+    private void fillObject(final Map<String, List<String>> formData, final Object object)
             throws NoSuchFieldException, IllegalAccessException, ParseException {
         final Class<?> aClass = object.getClass();
 
@@ -314,8 +179,8 @@ public class JavaAdminService {
             final String key = entry.getKey();
             if (key.startsWith(aClass.getSimpleName())) {
                 final String[] split = key.split("\\.");
-                final Attribute attribute = entity.getAttribute(split[1]);
-                final Field field = getField(aClass, attribute.getName());
+                final String fieldName = split[1];
+                final Field field = FieldAccessPrivilegedAction.getField(aClass, fieldName);
                 final String value = entry.getValue().get(0);
 
                 if (split.length == 3 && split[2].equals("null_value")) {
@@ -331,11 +196,11 @@ public class JavaAdminService {
                     } else if (declaringClass.equals(Boolean.class) || declaringClass.equals(boolean.class)) {
                         field.set(object, Boolean.parseBoolean(value));
                     } else if (List.class.isAssignableFrom(declaringClass)) {
-                        final ListAttribute listAttribute = entity.getDeclaredList(attribute.getName());
-                        if (listAttribute.getElementType().getJavaType().isEnum()) {
+                        final Class elementType = entityManagerComponent.getListElementClass(aClass, fieldName);
+                        if (elementType.isEnum()) {
                             List values = new LinkedList();
                             for (String entryValue : entry.getValue()) {
-                                values.add(Enum.valueOf(listAttribute.getElementType().getJavaType(), entryValue));
+                                values.add(Enum.valueOf(elementType, entryValue));
                             }
                             field.set(object, values);
                         } else {
@@ -343,7 +208,7 @@ public class JavaAdminService {
                         }
                     } else if (declaringClass.equals(String.class)) {
                         field.set(object, value);
-                    } else if (isEntity(declaringClass)) {
+                    } else if (entityManagerComponent.isEntity(declaringClass)) {
                         final JpaRepository fieldRepository = getJpaRepository(declaringClass);
                         final Object child = fieldRepository.getOne(Long.parseLong(value));
                         field.set(object, child);
@@ -352,20 +217,6 @@ public class JavaAdminService {
                     }
                 }
             }
-        }
-    }
-
-    private static class FieldAccessPrivilegedAction implements PrivilegedAction {
-        private final Field field;
-
-        public FieldAccessPrivilegedAction(final Field field) {
-            this.field = field;
-        }
-
-        @Override
-        public Object run() {
-            field.setAccessible(true);
-            return null;
         }
     }
 }
