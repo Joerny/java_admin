@@ -6,11 +6,12 @@
     <title>Overview</title>
 </head>
 <body>
+<jsp:include page="include/menu.jsp" />
     <h1>Overview</h1>
 <%
-    final Iterable<String> entityNames = (Iterable<String>) request.getAttribute("entities");
+    final Iterable<String> entities = (Iterable<String>) request.getAttribute("entities");
 
-    for (final String name : entityNames) {
+    for (final String name : entities) {
 %>
     <a href="/java-admin/list/<%= name %>"><%= name %></a><br>
 <%

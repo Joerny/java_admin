@@ -12,6 +12,8 @@
     <title>List of <%= command.getEntityName() %>s</title>
 </head>
 <body>
+<jsp:include page="include/menu.jsp" />
+    <h1>List of <%= command.getEntityName() %>s</h1>
     <a href="/java-admin/create/<%= command.getEntityName() %>">Create</a><br>
     <table>
         <thead>
@@ -36,7 +38,7 @@
 %>
                 <td>
 <%
-            for (String value : values) {
+            for (final String value : values) {
 %>
                     <%= value %><br />
 

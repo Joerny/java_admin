@@ -33,6 +33,10 @@ It runs under ``localhost:8080``. You can see the overview of the enities by cal
 
 ## Release History
 
+* 0.2
+    * Added support for entities as child elements
+    * Views with menu
+    * Introduction of service layer
 * 0.1
     * Added support for ``java.util.Date``
     * Cleanup in HTML code and structure
