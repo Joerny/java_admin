@@ -173,50 +173,61 @@ public class JavaAdminService {
 
     private void fillObject(final Map<String, List<String>> formData, final Object object)
             throws NoSuchFieldException, IllegalAccessException, ParseException {
-        final Class<?> aClass = object.getClass();
+        final Class<?> entityClass = object.getClass();
 
         for (final Map.Entry<String, List<String>> entry : formData.entrySet()) {
             final String key = entry.getKey();
-            if (key.startsWith(aClass.getSimpleName())) {
+            if (key.startsWith(entityClass.getSimpleName())) {
                 final String[] split = key.split("\\.");
                 final String fieldName = split[1];
-                final Field field = FieldAccessPrivilegedAction.getField(aClass, fieldName);
-                final String value = entry.getValue().get(0);
+                final Field field = FieldAccessPrivilegedAction.getField(entityClass, fieldName);
 
+                final Object fieldValue;
                 if (split.length == 3 && split[2].equals("null_value")) {
-                    field.set(object, null);
+                    fieldValue = null;
                 } else {
-                    final Class<?> declaringClass = field.getType();
-                    if (declaringClass.equals(Date.class)) {
-                        field.set(object, DateUtils.parseDate(value, DATE_PARSE_PATTERNS));
-                    } else if (declaringClass.equals(Long.class) || declaringClass.equals(long.class)) {
-                        field.set(object, Long.parseLong(value));
-                    } else if (declaringClass.equals(Integer.class) || declaringClass.equals(int.class)) {
-                        field.set(object, Integer.parseInt(value));
-                    } else if (declaringClass.equals(Boolean.class) || declaringClass.equals(boolean.class)) {
-                        field.set(object, Boolean.parseBoolean(value));
-                    } else if (List.class.isAssignableFrom(declaringClass)) {
-                        final Class elementType = entityManagerComponent.getListElementClass(aClass, fieldName);
-                        if (elementType.isEnum()) {
-                            List values = new LinkedList();
-                            for (String entryValue : entry.getValue()) {
-                                values.add(Enum.valueOf(elementType, entryValue));
-                            }
-                            field.set(object, values);
-                        } else {
-                            field.set(object, entry.getValue());
-                        }
-                    } else if (declaringClass.equals(String.class)) {
-                        field.set(object, value);
-                    } else if (entityManagerComponent.isEntity(declaringClass)) {
-                        final JpaRepository fieldRepository = getJpaRepository(declaringClass);
-                        final Object child = fieldRepository.getOne(Long.parseLong(value));
-                        field.set(object, child);
-                    } else {
-                        throw new IllegalStateException("Type could not be handled!");
-                    }
+                    final Class<?> fieldClass = field.getType();
+                    fieldValue = getFieldValue(entityClass, fieldName, fieldClass, entry.getValue());
                 }
+
+                field.set(object, fieldValue);
             }
         }
+    }
+
+    private Object getFieldValue(final Class<?> aClass, final String fieldName, final Class declaringClass, final List<String> entityValues)
+            throws ParseException {
+        final Object fieldValue;
+        final String value = entityValues.get(0);
+        if (List.class.isAssignableFrom(declaringClass)) {
+            final Class elementType = entityManagerComponent.getListElementClass(aClass, fieldName);
+            if (elementType.isEnum()) {
+                List values = new LinkedList();
+                for (String entryValue : entityValues) {
+                    values.add(Enum.valueOf(elementType, entryValue));
+                }
+                fieldValue = values;
+            } else {
+                fieldValue = entityValues;
+            }
+        } else if (entityManagerComponent.isEntity(declaringClass)) {
+            final JpaRepository fieldRepository = getJpaRepository(declaringClass);
+            fieldValue = fieldRepository.getOne(Long.parseLong(value));
+        } else if (declaringClass.isEnum()) {
+            fieldValue = Enum.valueOf(declaringClass, value);
+        } else if (declaringClass.equals(Date.class)) {
+            fieldValue = DateUtils.parseDate(value, DATE_PARSE_PATTERNS);
+        } else if (declaringClass.equals(Long.class) || declaringClass.equals(long.class)) {
+            fieldValue = Long.parseLong(value);
+        } else if (declaringClass.equals(Integer.class) || declaringClass.equals(int.class)) {
+            fieldValue = Integer.parseInt(value);
+        } else if (declaringClass.equals(Boolean.class) || declaringClass.equals(boolean.class)) {
+            fieldValue = Boolean.parseBoolean(value);
+        } else if (declaringClass.equals(String.class)) {
+            fieldValue = value;
+        } else {
+            throw new IllegalStateException("Type could not be handled!");
+        }
+        return fieldValue;
     }
 }

@@ -37,6 +37,7 @@ It runs under ``localhost:8080``. You can see the overview of the enities by cal
     * Added support for entities as child elements
     * Views with menu
     * Introduction of service layer
+    * Better handling of Enums
 * 0.1
     * Added support for ``java.util.Date``
     * Cleanup in HTML code and structure
