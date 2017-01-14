@@ -13,6 +13,8 @@ public class ChildEntity {
 
     private String text;
 
+    private SimpleEnum simpleEnum;
+
     public Long getId() {
         return id;
     }
@@ -27,5 +29,13 @@ public class ChildEntity {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public SimpleEnum getSimpleEnum() {
+        return simpleEnum;
+    }
+
+    public void setSimpleEnum(SimpleEnum simpleEnum) {
+        this.simpleEnum = simpleEnum;
     }
 }

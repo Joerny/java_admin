@@ -1,11 +1,14 @@
 package com.joerny.javaadmin.service;
 
 import com.joerny.javaadmin.FieldAccessPrivilegedAction;
+import com.joerny.javaadmin.controller.EntityInformation;
 
 import java.lang.reflect.Field;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -103,14 +106,27 @@ public class JavaAdminService {
     }
 
     public Map<String, List<?>> getChildEntities(final String entityName) throws IllegalAccessException, InstantiationException, NoSuchFieldException {
+        final Map<String, List<?>> childEntityInfos = new HashMap<>();
+
         final Map<String, Class<?>> childEntityClasses = entityManagerComponent.getChildEntities(entityName);
-        final Map<String, List<?>> childEntityInfos = new HashMap<>(childEntityClasses.size());
         for (final Map.Entry<String, Class<?>> child : childEntityClasses.entrySet()) {
             final Class<?> javaType = child.getValue();
             final JpaRepository fieldRepository = getJpaRepository(javaType);
             final List children = fieldRepository.findAll();
             childEntityInfos.put(child.getKey(), entityManagerComponent.getEntityInformation(children, javaType));
         }
+
+        final Map<String, Class<?>> enumClasses = entityManagerComponent.getEnums(entityName);
+        for (final Map.Entry<String, Class<?>> enumClass : enumClasses.entrySet()) {
+            final Class javaType = enumClass.getValue();
+            final Collection<Enum> enums = EnumSet.allOf(javaType);
+            final List<EntityInformation> information = new ArrayList<>(enums.size());
+            for (Enum singleEnum : enums) {
+                information.add(new EntityInformation(singleEnum.name(), singleEnum.toString()));
+            }
+            childEntityInfos.put(enumClass.getKey(), information);
+        }
+
         return childEntityInfos;
     }
 

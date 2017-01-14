@@ -97,6 +97,24 @@ public class EntityManagerComponent {
         return childEntities;
     }
 
+    public Map<String, Class<?>> getEnums(final String entityName) throws IllegalAccessException, InstantiationException, NoSuchFieldException {
+        final EntityType<?> entity = getEntityType(entityName);
+
+        final Map<String, Class<?>> enums = new HashMap<>();
+
+        final Set attributes = entity.getDeclaredSingularAttributes();
+
+        for (final Object attr : attributes) {
+            final SingularAttribute attribute = (SingularAttribute) attr;
+
+            if (attribute.getJavaType().isEnum()) {
+                enums.put(attribute.getName(), attribute.getJavaType());
+            }
+        }
+
+        return enums;
+    }
+
     public boolean isEntity(final Class<?> clazz) {
         boolean check;
         try {
