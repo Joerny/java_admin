@@ -5,7 +5,7 @@
 
 	<groupId>com.joerny</groupId>
 	<artifactId>java_admin</artifactId>
-	<version>0.2-SNAPSHOT</version>
+	<version>0.2</version>
 	<packaging>jar</packaging>
 
 	<name>JavaAdmin</name>
