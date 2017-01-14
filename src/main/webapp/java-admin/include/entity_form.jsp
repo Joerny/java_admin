@@ -44,7 +44,7 @@
 <%
             }
 %>
-    </select>
+    </select><br>
 <%
         } else {
             final String disabled;
