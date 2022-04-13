@@ -21,6 +21,8 @@ public class BasicEntity {
 
     private Date simpleDate;
 
+    private Double simpleDouble;
+
     @OneToOne(targetEntity = ChildEntity.class)
     private ChildEntity child;
 
@@ -67,5 +69,13 @@ public class BasicEntity {
 
     public void setChild(final ChildEntity child) {
         this.child = child;
+    }
+
+    public Double getSimpleDouble() {
+        return simpleDouble;
+    }
+
+    public void setSimpleDouble(Double simpleDouble) {
+        this.simpleDouble = simpleDouble;
     }
 }
