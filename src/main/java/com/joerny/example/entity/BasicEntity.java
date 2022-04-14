@@ -45,10 +45,12 @@ public class BasicEntity {
         this.simpleText = simpleText;
     }
 
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<SimpleEnum> getSimpleEnum() {
         return simpleEnum;
     }
 
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setSimpleEnum(final List<SimpleEnum> simpleEnum) {
         this.simpleEnum = simpleEnum;
     }
@@ -63,10 +65,12 @@ public class BasicEntity {
         this.simpleDate = simpleDate;
     }
 
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public ChildEntity getChild() {
         return child;
     }
 
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public void setChild(final ChildEntity child) {
         this.child = child;
     }
