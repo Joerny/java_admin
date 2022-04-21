@@ -15,6 +15,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.support.Repositories;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -69,9 +71,18 @@ public class JavaAdminControllerTest {
 
     @Test
     public void list() throws Exception {
+        final BasicEntity basicEntity = new BasicEntity();
+        basicEntity.setSimpleText("listTest");
+
+        basicEntityRepository.save(basicEntity);
+
         final ResultActions getResult = getMockMvc().perform(MockMvcRequestBuilders.get(LIST_URI + BasicEntity.class.getSimpleName()));
         getResult.andExpect(MockMvcResultMatchers.forwardedUrl(LIST_JSP_URL));
         getResult.andExpect(MockMvcResultMatchers.model().attribute("command", Matchers.notNullValue()));
+
+        final JavaAdminListCommand command = (JavaAdminListCommand) getResult.andReturn().getModelAndView().getModel().get("command");
+        Assert.assertEquals("BasicEntity", command.getEntityName());
+        Assert.assertEquals(1, command.getEntities().size());
     }
 
     @Test
