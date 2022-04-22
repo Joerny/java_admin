@@ -2,6 +2,7 @@ package com.joerny.javaadmin.controller;
 
 import com.joerny.JavaAdminApplication;
 import com.joerny.example.entity.BasicEntity;
+import com.joerny.example.entity.BasicEntityRepository;
 import com.joerny.example.entity.ChildEntity;
 import com.joerny.example.entity.ChildEntityRepository;
 
@@ -14,6 +15,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.support.Repositories;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -44,6 +47,8 @@ public class JavaAdminControllerTest {
     private WebApplicationContext wac;
     @Autowired
     private ChildEntityRepository childEntityRepository;
+    @Autowired
+    private BasicEntityRepository basicEntityRepository;
 
     private MockMvc mockMvc;
 
@@ -66,9 +71,18 @@ public class JavaAdminControllerTest {
 
     @Test
     public void list() throws Exception {
+        final BasicEntity basicEntity = new BasicEntity();
+        basicEntity.setSimpleText("listTest");
+
+        basicEntityRepository.save(basicEntity);
+
         final ResultActions getResult = getMockMvc().perform(MockMvcRequestBuilders.get(LIST_URI + BasicEntity.class.getSimpleName()));
         getResult.andExpect(MockMvcResultMatchers.forwardedUrl(LIST_JSP_URL));
         getResult.andExpect(MockMvcResultMatchers.model().attribute("command", Matchers.notNullValue()));
+
+        final JavaAdminListCommand command = (JavaAdminListCommand) getResult.andReturn().getModelAndView().getModel().get("command");
+        Assert.assertEquals("BasicEntity", command.getEntityName());
+        Assert.assertEquals(1, command.getEntities().size());
     }
 
     @Test
@@ -76,6 +90,22 @@ public class JavaAdminControllerTest {
         final ResultActions getResult = getMockMvc().perform(MockMvcRequestBuilders.get(CREATE_URI + BasicEntity.class.getSimpleName()));
         getResult.andExpect(MockMvcResultMatchers.forwardedUrl(CREATE_JSP_URL));
         getResult.andExpect(MockMvcResultMatchers.request().attribute("entityName", Matchers.equalTo(BasicEntity.class.getSimpleName())));
+    }
+
+    @Test
+    public void createSimplePost() throws Exception {
+        final long count = basicEntityRepository.count();
+
+        final MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post(CREATE_URI + BasicEntity.class.getSimpleName());
+        request.contentType(MediaType.APPLICATION_FORM_URLENCODED);
+        request.param(BasicEntity.class.getSimpleName() + ".simpleText", "test");
+        request.param(BasicEntity.class.getSimpleName() + ".simpleDouble", "3.5");
+
+        final ResultActions getResult = getMockMvc().perform(request);
+        getResult.andExpect(MockMvcResultMatchers.status().is(302));
+        getResult.andExpect(MockMvcResultMatchers.redirectedUrl(LIST_URI + BasicEntity.class.getSimpleName()));
+
+        Assert.assertEquals(count + 1, basicEntityRepository.count());
     }
 
     @Test
