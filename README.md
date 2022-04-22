@@ -33,6 +33,10 @@ It runs under ``localhost:8080``. You can see the overview of the enities by cal
 
 ## Release History
 
+* 0.3
+    * Added support for Double
+    * Replaced Findbugs with Spotbugs
+    * Updated libraries
 * 0.2
     * Added support for entities as child elements
     * Views with menu
