@@ -241,6 +241,8 @@ public class JavaAdminService {
             fieldValue = Boolean.parseBoolean(value);
         } else if (declaringClass.equals(Double.class)) {
             fieldValue = Double.parseDouble(value);
+        } else if (declaringClass.equals(Float.class)) {
+            fieldValue = Float.parseFloat(value);
         } else if (declaringClass.equals(String.class)) {
             fieldValue = value;
         } else {

@@ -73,6 +73,7 @@ public class JavaAdminControllerTest {
     public void list() throws Exception {
         final BasicEntity basicEntity = new BasicEntity();
         basicEntity.setSimpleText("listTest");
+        basicEntity.setSimpleFloat(2.3f);
 
         basicEntityRepository.save(basicEntity);
 
@@ -100,6 +101,7 @@ public class JavaAdminControllerTest {
         request.contentType(MediaType.APPLICATION_FORM_URLENCODED);
         request.param(BasicEntity.class.getSimpleName() + ".simpleText", "test");
         request.param(BasicEntity.class.getSimpleName() + ".simpleDouble", "3.5");
+        request.param(BasicEntity.class.getSimpleName() + ".simpleFloat", "2.7");
 
         final ResultActions getResult = getMockMvc().perform(request);
         getResult.andExpect(MockMvcResultMatchers.status().is(302));

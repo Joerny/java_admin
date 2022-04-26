@@ -23,6 +23,8 @@ public class BasicEntity {
 
     private Double simpleDouble;
 
+    private Float simpleFloat;
+
     @OneToOne(targetEntity = ChildEntity.class)
     private ChildEntity child;
 
@@ -81,5 +83,13 @@ public class BasicEntity {
 
     public void setSimpleDouble(Double simpleDouble) {
         this.simpleDouble = simpleDouble;
+    }
+
+    public Float getSimpleFloat() {
+        return simpleFloat;
+    }
+
+    public void setSimpleFloat(Float simpleFloat) {
+        this.simpleFloat = simpleFloat;
     }
 }
