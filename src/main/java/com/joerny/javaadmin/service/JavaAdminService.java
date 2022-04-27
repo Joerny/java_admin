@@ -3,6 +3,7 @@ package com.joerny.javaadmin.service;
 import com.joerny.javaadmin.FieldAccessPrivilegedAction;
 import com.joerny.javaadmin.controller.EntityInformation;
 
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -133,7 +134,7 @@ public class JavaAdminService {
     private JpaRepository<?, ?> getJpaRepository(final Class<?> javaType) {
         final Repositories repositories = new Repositories(appContext);
 
-        return (JpaRepository<?, ?>) repositories.getRepositoryFor(javaType);
+        return (JpaRepository<?, ?>) repositories.getRepositoryFor(javaType).orElseThrow(RuntimeException::new);
     }
 
     public Map<String, Object> getFieldValues(final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
@@ -145,7 +146,7 @@ public class JavaAdminService {
 
         final JpaRepository repository = getJpaRepository(entityClass);
 
-        final Object object = repository.findOne(id);
+        final Object object = repository.findById(id);
 
         return entityManagerComponent.getFieldValues(entityName, object);
     }
@@ -169,7 +170,7 @@ public class JavaAdminService {
 
         final JpaRepository repository = getJpaRepository(entityClass);
 
-        Object object = repository.findOne(id);
+        Object object = repository.findById(id);
 
         fillObject(formData, object);
 
@@ -181,7 +182,7 @@ public class JavaAdminService {
 
         final JpaRepository repository = getJpaRepository(entityClass);
 
-        final Object object = repository.findOne(id);
+        final Object object = repository.findById(id);
 
         repository.delete(object);
     }
