@@ -7,7 +7,12 @@ import com.joerny.example.entity.ChildEntity;
 import com.joerny.example.entity.ChildEntityRepository;
 
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
+import com.joerny.example.entity.SimpleEnum;
+import org.apache.commons.lang3.ArrayUtils;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Before;
@@ -71,9 +76,14 @@ public class JavaAdminControllerTest {
 
     @Test
     public void list() throws Exception {
+        final LinkedList<SimpleEnum> enumList = new LinkedList<>();
+        enumList.add(SimpleEnum.TRES);
+        enumList.add(SimpleEnum.DUO);
+
         final BasicEntity basicEntity = new BasicEntity();
         basicEntity.setSimpleText("listTest");
         basicEntity.setSimpleFloat(2.3f);
+        basicEntity.setSimpleEnum(enumList);
 
         basicEntityRepository.save(basicEntity);
 
@@ -83,7 +93,16 @@ public class JavaAdminControllerTest {
 
         final JavaAdminListCommand command = (JavaAdminListCommand) getResult.andReturn().getModelAndView().getModel().get("command");
         Assert.assertEquals("BasicEntity", command.getEntityName());
-        Assert.assertEquals(1, command.getEntities().size());
+
+        final Map<String, Map<String, List<String>>> entities = command.getEntities();
+
+        Assert.assertEquals(1, entities.size());
+
+        final Map<String, List<String>> testEntity = entities.entrySet().iterator().next().getValue();
+        Assert.assertEquals(7, testEntity.size());
+
+        Assert.assertEquals("listTest", testEntity.get("simpleText").get(0));
+        Assert.assertEquals("[TRES, DUO]", ArrayUtils.toString(testEntity.get("simpleEnum")));
     }
 
     @Test
@@ -102,6 +121,7 @@ public class JavaAdminControllerTest {
         request.param(BasicEntity.class.getSimpleName() + ".simpleText", "test");
         request.param(BasicEntity.class.getSimpleName() + ".simpleDouble", "3.5");
         request.param(BasicEntity.class.getSimpleName() + ".simpleFloat", "2.7");
+        request.param(BasicEntity.class.getSimpleName() + ".simpleEnum", "DUO", "TRES");
 
         final ResultActions getResult = getMockMvc().perform(request);
         getResult.andExpect(MockMvcResultMatchers.status().is(302));
