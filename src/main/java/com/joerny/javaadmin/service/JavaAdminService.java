@@ -146,7 +146,7 @@ public class JavaAdminService {
 
         final JpaRepository repository = getJpaRepository(entityClass);
 
-        final Object object = repository.findById(id);
+        final Object object = repository.findById(id).get();
 
         return entityManagerComponent.getFieldValues(entityName, object);
     }
@@ -170,7 +170,7 @@ public class JavaAdminService {
 
         final JpaRepository repository = getJpaRepository(entityClass);
 
-        Object object = repository.findById(id);
+        Object object = repository.findById(id).get();
 
         fillObject(formData, object);
 
@@ -182,7 +182,7 @@ public class JavaAdminService {
 
         final JpaRepository repository = getJpaRepository(entityClass);
 
-        final Object object = repository.findById(id);
+        final Object object = repository.findById(id).get();
 
         repository.delete(object);
     }
