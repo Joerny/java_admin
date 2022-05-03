@@ -7,7 +7,9 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -23,6 +25,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.support.Repositories;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.WebApplicationContext;
+
+import javax.persistence.Entity;
 
 @Service
 public class JavaAdminService {
@@ -68,7 +72,7 @@ public class JavaAdminService {
                 final Field field = FieldAccessPrivilegedAction.getField(datum.getClass(), idName);
 
                 final List<String> values = new LinkedList<>();
-                values.add(Objects.toString(field.get(datum)));
+                values.add(getString(field.get(datum)));
 
                 id = field.get(datum).toString();
 
@@ -79,7 +83,7 @@ public class JavaAdminService {
                 final Field field = FieldAccessPrivilegedAction.getField(datum.getClass(), name);
 
                 final List<String> values = new LinkedList<>();
-                values.add(Objects.toString(field.get(datum)));
+                values.add(getString(field.get(datum)));
 
                 entityValues.put(name, values);
             }
@@ -94,7 +98,7 @@ public class JavaAdminService {
                 } else if (Collection.class.isAssignableFrom(object.getClass())) {
                     final Collection collection = (Collection) object;
                     for (final Object value : collection) {
-                        values.add(Objects.toString(value));
+                        values.add(getString(value));
                     }
                 }
 
@@ -104,6 +108,17 @@ public class JavaAdminService {
             entities.put(id, entityValues);
         }
         return entities;
+    }
+
+    private String getString(Object object) throws NoSuchFieldException, IllegalAccessException {
+        final String desc;
+
+        if (object != null && entityManagerComponent.isEntity(object.getClass())) {
+            desc = entityManagerComponent.getEntityInformation(Collections.singletonList(object), object.getClass()).get(0).getDescription();
+        } else {
+            desc = Objects.toString(object);
+        }
+        return desc;
     }
 
     public Map<String, List<?>> getChildEntities(final String entityName) throws IllegalAccessException, InstantiationException, NoSuchFieldException {
