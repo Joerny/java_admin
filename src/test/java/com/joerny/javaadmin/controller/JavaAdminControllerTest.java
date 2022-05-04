@@ -7,7 +7,13 @@ import com.joerny.example.entity.ChildEntity;
 import com.joerny.example.entity.ChildEntityRepository;
 
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
+import com.joerny.example.entity.SimpleEnum;
+import org.apache.commons.lang3.ArrayUtils;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Before;
@@ -15,6 +21,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Example;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.support.Repositories;
 import org.springframework.http.MediaType;
@@ -71,10 +78,22 @@ public class JavaAdminControllerTest {
 
     @Test
     public void list() throws Exception {
+        final ChildEntity child = new ChildEntity();
+        child.setText("childListTest");
+
+        childEntityRepository.save(child);
+
+        final LinkedList<SimpleEnum> enumList = new LinkedList<>();
+        enumList.add(SimpleEnum.TRES);
+        enumList.add(SimpleEnum.DUO);
+
         final BasicEntity basicEntity = new BasicEntity();
         basicEntity.setSimpleText("listTest");
+        basicEntity.setSimpleFloat(2.3f);
+        basicEntity.setSimpleEnum(enumList);
+        basicEntity.setChild(child);
 
-        basicEntityRepository.save(basicEntity);
+        Long testId = basicEntityRepository.save(basicEntity).getId();
 
         final ResultActions getResult = getMockMvc().perform(MockMvcRequestBuilders.get(LIST_URI + BasicEntity.class.getSimpleName()));
         getResult.andExpect(MockMvcResultMatchers.forwardedUrl(LIST_JSP_URL));
@@ -82,7 +101,16 @@ public class JavaAdminControllerTest {
 
         final JavaAdminListCommand command = (JavaAdminListCommand) getResult.andReturn().getModelAndView().getModel().get("command");
         Assert.assertEquals("BasicEntity", command.getEntityName());
-        Assert.assertEquals(1, command.getEntities().size());
+
+        final Map<String, Map<String, List<String>>> entities = command.getEntities();
+
+        Assert.assertEquals(basicEntityRepository.count(), entities.size());
+
+        final Map<String, List<String>> testEntity = entities.get(testId.toString());
+        Assert.assertEquals(7, testEntity.size());
+
+        Assert.assertEquals("listTest", testEntity.get("simpleText").get(0));
+        Assert.assertEquals("[TRES, DUO]", ArrayUtils.toString(testEntity.get("simpleEnum")));
     }
 
     @Test
@@ -94,18 +122,34 @@ public class JavaAdminControllerTest {
 
     @Test
     public void createSimplePost() throws Exception {
+        final String uuid = "createSimplePostTest" + UUID.randomUUID().toString();
+
         final long count = basicEntityRepository.count();
 
         final MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post(CREATE_URI + BasicEntity.class.getSimpleName());
         request.contentType(MediaType.APPLICATION_FORM_URLENCODED);
-        request.param(BasicEntity.class.getSimpleName() + ".simpleText", "test");
+        request.param(BasicEntity.class.getSimpleName() + ".simpleText", uuid);
         request.param(BasicEntity.class.getSimpleName() + ".simpleDouble", "3.5");
+        request.param(BasicEntity.class.getSimpleName() + ".simpleFloat", "2.7");
+        request.param(BasicEntity.class.getSimpleName() + ".simpleEnum", "DUO", "TRES");
 
         final ResultActions getResult = getMockMvc().perform(request);
         getResult.andExpect(MockMvcResultMatchers.status().is(302));
         getResult.andExpect(MockMvcResultMatchers.redirectedUrl(LIST_URI + BasicEntity.class.getSimpleName()));
 
         Assert.assertEquals(count + 1, basicEntityRepository.count());
+
+        final BasicEntity probe = new BasicEntity();
+        probe.setSimpleText(uuid);
+
+        List<BasicEntity> result = basicEntityRepository.findAll(Example.of(probe));
+
+        Assert.assertEquals(1, result.size());
+
+        final BasicEntity savedEntity = result.get(0);
+
+        Assert.assertEquals(uuid, savedEntity.getSimpleText());
+        Assert.assertEquals(Double.valueOf(3.5), savedEntity.getSimpleDouble());
     }
 
     @Test

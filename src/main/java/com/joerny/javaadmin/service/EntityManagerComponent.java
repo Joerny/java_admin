@@ -203,7 +203,7 @@ public class EntityManagerComponent {
         final List<EntityInformation> information = new ArrayList<>(children.size());
         for (final Object child : children) {
             final Field field = FieldAccessPrivilegedAction.getField(javaType, id.getName());
-            information.add(new EntityInformation(field.get(child), child.toString()));
+            information.add(new EntityInformation(field.get(child), child));
         }
         return information;
     }
