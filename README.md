@@ -33,6 +33,10 @@ It runs under ``localhost:8080``. You can see the overview of the enities by cal
 
 ## Release History
 
+* 0.4
+    * Added support for Float
+    * Added PiTest and more testing
+    * Updated libraries
 * 0.3
     * Added support for Double
     * Replaced Findbugs with Spotbugs
