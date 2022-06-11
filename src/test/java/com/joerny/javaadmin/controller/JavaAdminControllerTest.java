@@ -89,6 +89,7 @@ public class JavaAdminControllerTest {
 
         final BasicEntity basicEntity = new BasicEntity();
         basicEntity.setSimpleText("listTest");
+        basicEntity.setNotNullableColumn("NotNullListTest");
         basicEntity.setSimpleFloat(2.3f);
         basicEntity.setSimpleEnum(enumList);
         basicEntity.setChild(child);
@@ -107,7 +108,7 @@ public class JavaAdminControllerTest {
         Assert.assertEquals(basicEntityRepository.count(), entities.size());
 
         final Map<String, List<String>> testEntity = entities.get(testId.toString());
-        Assert.assertEquals(7, testEntity.size());
+        Assert.assertEquals(8, testEntity.size());
 
         Assert.assertEquals("listTest", testEntity.get("simpleText").get(0));
         Assert.assertEquals("[TRES, DUO]", ArrayUtils.toString(testEntity.get("simpleEnum")));
@@ -128,6 +129,7 @@ public class JavaAdminControllerTest {
 
         final MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post(CREATE_URI + BasicEntity.class.getSimpleName());
         request.contentType(MediaType.APPLICATION_FORM_URLENCODED);
+        request.param(BasicEntity.class.getSimpleName() + ".notNullableColumn", "NotNull");
         request.param(BasicEntity.class.getSimpleName() + ".simpleText", uuid);
         request.param(BasicEntity.class.getSimpleName() + ".simpleDouble", "3.5");
         request.param(BasicEntity.class.getSimpleName() + ".simpleFloat", "2.7");

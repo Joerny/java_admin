@@ -1,16 +1,18 @@
 <%@ page import="java.util.List,
                  java.util.Map,
                  java.util.Objects,
-                 com.joerny.javaadmin.controller.EntityInformation" %>
+                 com.joerny.javaadmin.controller.EntityInformation,
+                 com.joerny.javaadmin.controller.FieldInformation"
+%>
 <%
     final String entityName = (String) request.getAttribute("entityName");
-    final Map<String, List<String>> fields = (Map<String, List<String>>) request.getAttribute("fields");
+    final List<FieldInformation> fields = (List<FieldInformation>) request.getAttribute("fields");
     final Map<String, List<EntityInformation>> childEntities = (Map<String, List<EntityInformation>>) request.getAttribute("childEntities");
 %>
 <form method="post">
 <%
-    for (final Map.Entry<String, ?> field : fields.entrySet()) {
-        final String fieldName = field.getKey();
+    for (final FieldInformation field : fields) {
+        final String fieldName = field.getName();
         final String fieldIdentifier = entityName + '.' + fieldName;
 %>
     <label for="<%= fieldIdentifier %>"><%= fieldName %></label>:<br>
@@ -49,7 +51,7 @@
         } else {
             final String disabled;
             final String checked;
-            if (fieldValue == null) {
+            if (field.isCanBeNull() && fieldValue == null) {
                 disabled = " disabled";
                 checked = "checked";
             } else {
@@ -58,8 +60,15 @@
             }
 %>
     <input name="<%= fieldIdentifier %>" type="text" value="<%= Objects.toString(fieldValue, "") %>"<%= disabled %>/>
+<%
+            if (field.isCanBeNull()) {
+%>
     <label for="<%= fieldIdentifier %>.null_value">NULL</label>:
-    <input type="checkbox" name="<%= fieldIdentifier %>.null_value" onclick="modifyInput('<%= fieldIdentifier %>')"<%= checked %>/><br>
+    <input type="checkbox" name="<%= fieldIdentifier %>.null_value" onclick="modifyInput('<%= fieldIdentifier %>')"<%= checked %>/>
+<%
+            }
+%>
+    <br>
 <%
         }
     }

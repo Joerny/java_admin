@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.joerny.javaadmin.controller.FieldInformation;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -152,11 +153,11 @@ public class JavaAdminService {
         return (JpaRepository<?, ?>) repositories.getRepositoryFor(javaType).orElseThrow(RuntimeException::new);
     }
 
-    public Map<String, Object> getFieldValues(final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
+    public List<FieldInformation> getFieldValues(final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
         return entityManagerComponent.getFieldValues(entityName);
     }
 
-    public Map<String, Object> getFieldValues(final String entityName, final Long id) throws NoSuchFieldException, IllegalAccessException {
+    public List<FieldInformation> getFieldValues(final String entityName, final Long id) throws NoSuchFieldException, IllegalAccessException {
         final Class<?> entityClass = entityManagerComponent.getEntityClass(entityName);
 
         final JpaRepository repository = getJpaRepository(entityClass);

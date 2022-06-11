@@ -2,6 +2,7 @@ package com.joerny.example.entity;
 
 import java.util.Date;
 import java.util.List;
+import javax.persistence.Column;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -18,6 +19,9 @@ public class BasicEntity {
     private Long id;
 
     private String simpleText;
+
+    @Column(nullable = false)
+    private String notNullableColumn;
 
     private Date simpleDate;
 
@@ -91,5 +95,13 @@ public class BasicEntity {
 
     public void setSimpleFloat(Float simpleFloat) {
         this.simpleFloat = simpleFloat;
+    }
+
+    public String getNotNullableColumn() {
+        return notNullableColumn;
+    }
+
+    public void setNotNullableColumn(String notNullableColumn) {
+        this.notNullableColumn = notNullableColumn;
     }
 }

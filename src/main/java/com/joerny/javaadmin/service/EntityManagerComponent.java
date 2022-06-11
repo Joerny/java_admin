@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import javax.persistence.Column;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.EntityType;
@@ -19,6 +20,7 @@ import javax.persistence.metamodel.ListAttribute;
 import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 
+import com.joerny.javaadmin.controller.FieldInformation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -138,54 +140,61 @@ public class EntityManagerComponent {
         return entity;
     }
 
-    public Map<String, Object> getFieldValues(final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
+    public List<FieldInformation> getFieldValues(final String entityName) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
         final EntityType<?> entity = getEntityType(entityName);
 
         final Object object = entity.getJavaType().newInstance();
 
-        final Map<String, Object> fields = getSingleAttrFieldValues(entity, object);
+        final List<FieldInformation> fields = getSingleAttrFieldValues(entity, object);
 
         final Set multiAttributes = entity.getDeclaredPluralAttributes();
         for (final Object attr : multiAttributes) {
             final Attribute attribute = (Attribute) attr;
-            fields.put(attribute.getName(), new LinkedList());
+            final Field field = FieldAccessPrivilegedAction.getField(object.getClass(), attribute.getName());
+            final boolean canBeNull = !field.isAnnotationPresent(Column.class) || field.getAnnotation(Column.class).nullable();
+            FieldInformation info = new FieldInformation(attribute.getName(), canBeNull, new LinkedList());
+            fields.add(info);
         }
 
         return fields;
     }
 
-    public Map<String, Object> getFieldValues(final String entityName, final Object object) throws NoSuchFieldException, IllegalAccessException {
+    public List<FieldInformation> getFieldValues(final String entityName, final Object object) throws NoSuchFieldException, IllegalAccessException {
         final EntityType<?> entity = getEntityType(entityName);
-        final Map<String, Object> fields = getSingleAttrFieldValues(entity, object);
+        final List<FieldInformation> fields = getSingleAttrFieldValues(entity, object);
 
         for (final Object attr : entity.getDeclaredPluralAttributes()) {
             final PluralAttribute attribute = (PluralAttribute) attr;
 
             final List<String> values = new LinkedList<>();
 
+            final Field field = FieldAccessPrivilegedAction.getField(object.getClass(), attribute.getName());
             if (Collection.class.isAssignableFrom(object.getClass())) {
-                final Field field = FieldAccessPrivilegedAction.getField(object.getClass(), attribute.getName());
                 final Collection collection = (Collection) field.get(object);
                 for (Object value : collection) {
                     values.add(Objects.toString(value));
                 }
             }
 
-            fields.put(attribute.getName(), values);
+            final boolean canBeNull = !field.isAnnotationPresent(Column.class) || field.getAnnotation(Column.class).nullable();
+            final FieldInformation fieldInfo = new FieldInformation(attribute.getName(), canBeNull, values);
+            fields.add(fieldInfo);
         }
         return fields;
     }
 
 
-    private static Map<String, Object> getSingleAttrFieldValues(final EntityType<?> entity, final Object object)
+    private static List<FieldInformation> getSingleAttrFieldValues(final EntityType<?> entity, final Object object)
             throws NoSuchFieldException, IllegalAccessException {
-        final Map<String, Object> fields = new HashMap<>();
+        final List<FieldInformation> fields = new LinkedList<>();
         final Class<?> aClass = object.getClass();
         for (final Object attr : entity.getDeclaredSingularAttributes()) {
             final SingularAttribute attribute = (SingularAttribute) attr;
             if (!attribute.isId()) {
                 final Field field = FieldAccessPrivilegedAction.getField(aClass, attribute.getName());
-                fields.put(attribute.getName(), Objects.toString(field.get(object), null));
+                final boolean canBeNull = !field.isAnnotationPresent(Column.class) || field.getAnnotation(Column.class).nullable();
+                final FieldInformation fieldInfo = new FieldInformation(attribute.getName(), canBeNull, Objects.toString(field.get(object), null));
+                fields.add(fieldInfo);
             }
         }
         return fields;
