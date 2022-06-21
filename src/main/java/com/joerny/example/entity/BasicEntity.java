@@ -9,6 +9,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToOne;
+import javax.validation.constraints.NotNull;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
@@ -22,6 +23,9 @@ public class BasicEntity {
 
     @Column(nullable = false)
     private String notNullableColumn;
+
+    @NotNull
+    private String notNullField;
 
     private Date simpleDate;
 
@@ -103,5 +107,13 @@ public class BasicEntity {
 
     public void setNotNullableColumn(String notNullableColumn) {
         this.notNullableColumn = notNullableColumn;
+    }
+
+    public String getNotNullField() {
+        return notNullField;
+    }
+
+    public void setNotNullField(String notNullField) {
+        this.notNullField = notNullField;
     }
 }

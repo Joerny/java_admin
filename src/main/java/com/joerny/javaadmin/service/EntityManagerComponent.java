@@ -19,6 +19,7 @@ import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.ListAttribute;
 import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.SingularAttribute;
+import javax.validation.constraints.NotNull;
 
 import com.joerny.javaadmin.controller.FieldInformation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -147,25 +148,24 @@ public class EntityManagerComponent {
 
         final List<FieldInformation> fields = getSingleAttrFieldValues(entity, object);
 
-        final Set multiAttributes = entity.getDeclaredPluralAttributes();
-        for (final Object attr : multiAttributes) {
-            final Attribute attribute = (Attribute) attr;
+        for (final PluralAttribute<?,?,?> attribute : entity.getDeclaredPluralAttributes()) {
             final Field field = FieldAccessPrivilegedAction.getField(object.getClass(), attribute.getName());
-            final boolean canBeNull = !field.isAnnotationPresent(Column.class) || field.getAnnotation(Column.class).nullable();
-            FieldInformation info = new FieldInformation(attribute.getName(), canBeNull, new LinkedList());
+            FieldInformation info = new FieldInformation(attribute.getName(), canFieldBeNull(field), new LinkedList());
             fields.add(info);
         }
 
         return fields;
     }
 
+    private static boolean canFieldBeNull(Field field) {
+        return !field.isAnnotationPresent(NotNull.class) && (!field.isAnnotationPresent(Column.class) || field.getAnnotation(Column.class).nullable());
+    }
+
     public List<FieldInformation> getFieldValues(final String entityName, final Object object) throws NoSuchFieldException, IllegalAccessException {
         final EntityType<?> entity = getEntityType(entityName);
         final List<FieldInformation> fields = getSingleAttrFieldValues(entity, object);
 
-        for (final Object attr : entity.getDeclaredPluralAttributes()) {
-            final PluralAttribute attribute = (PluralAttribute) attr;
-
+        for (final PluralAttribute<?,?,?> attribute : entity.getDeclaredPluralAttributes()) {
             final List<String> values = new LinkedList<>();
 
             final Field field = FieldAccessPrivilegedAction.getField(object.getClass(), attribute.getName());
@@ -176,8 +176,7 @@ public class EntityManagerComponent {
                 }
             }
 
-            final boolean canBeNull = !field.isAnnotationPresent(Column.class) || field.getAnnotation(Column.class).nullable();
-            final FieldInformation fieldInfo = new FieldInformation(attribute.getName(), canBeNull, values);
+            final FieldInformation fieldInfo = new FieldInformation(attribute.getName(), canFieldBeNull(field), values);
             fields.add(fieldInfo);
         }
         return fields;
@@ -192,8 +191,7 @@ public class EntityManagerComponent {
             final SingularAttribute attribute = (SingularAttribute) attr;
             if (!attribute.isId()) {
                 final Field field = FieldAccessPrivilegedAction.getField(aClass, attribute.getName());
-                final boolean canBeNull = !field.isAnnotationPresent(Column.class) || field.getAnnotation(Column.class).nullable();
-                final FieldInformation fieldInfo = new FieldInformation(attribute.getName(), canBeNull, Objects.toString(field.get(object), null));
+                final FieldInformation fieldInfo = new FieldInformation(attribute.getName(), canFieldBeNull(field), Objects.toString(field.get(object), null));
                 fields.add(fieldInfo);
             }
         }
